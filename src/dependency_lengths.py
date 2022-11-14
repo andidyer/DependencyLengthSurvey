@@ -5,8 +5,8 @@ from typing import List, Generator
 class DependencyLengthChecker:
     """Sentence-level"""
 
-    def __init__(self, ignore_root: bool = False):
-        self.ignore_root = ignore_root
+    def __init__(self, count_root: bool = False):
+        self.count_root = count_root
 
     @staticmethod
     def get_pairwise_dependency_length(token: Token) -> int:
@@ -37,7 +37,7 @@ class DependencyLengthChecker:
 
     def _yield_pairwise_dependency_lengths(self, sentence: TokenList) -> Generator:
         for token in sentence:
-            if self.ignore_root and token["head"] == 0:
+            if not self.count_root and token["head"] == 0:
                 continue
             elif not isinstance(token["id"], int):
                 continue
