@@ -53,7 +53,7 @@ class SentenceCleaner:
 
         return tokenlist
 
-    def _make_index_mapping(self, tokenlist: TokenList) -> defaultdict:
+    def _make_index_mapping(self, tokenlist: TokenList) -> dict:
         index_mapping = {0: 0, None: None}
         i = 1
         for token in tokenlist:
