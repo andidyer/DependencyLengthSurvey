@@ -46,7 +46,7 @@ For example:
 ```shell
 user$ python get_dependency_lengths.py \
 --treebank my_treebank.conllu \
---datafile my_output_file.json
+--datafile my_output_file.ndjson
 ```
 
 Alternatively, if your data is in several treebanks, you can 
@@ -55,7 +55,7 @@ read from all files in a specified directory.
 ```shell
 user$ python get_dependency_lengths.py \
 --directory my_treebank_directory/ \
---datafile my_output_file.json
+--datafile my_output_file.ndjson
 ```
 
 Note that `--treebank` and `--directory` are mutually exclusive.
@@ -73,20 +73,20 @@ This can be used as follows:
 ```shell
 user$ python get_dependency_lengths.py \
 --treebank my_treebank.conllu \
---datafile my_output_file.json \
+--datafile my_output_file.ndjson \
 --count_root
 ```
 
 ### The output
 
-The output of the script is a file in json format containing a 
+The output of the script is a file in ndjson format containing a 
 list of json objects, where each object contains 
 - `sentence_id`: The sentence ID (taken from the sentence metadata in the conllu file)
 - `sentence_length`: The sentence length (in tokens, excluding those that have been excluded from the analysis)
 - `sentence_sum_dependency_length`: The sum dependency length of the sentence (the sum of dependency lengths between all relation pairs in the sentence)
 - `sentence_dependency_lengths`: A list of individual dependency lengths in the sentence (excluding those tokens excluded from the analysis)
 
-This file should be named with the file extension `.json`.
+This file should be named with the file extension `.ndjson`.
 
 ### Considerations
 
@@ -102,5 +102,6 @@ multiword tokens are ignored.
 - [x] Option to toggle ignore root.
 - [ ] Argument for filtering tokens based on fields
 and features.
+- [ ] Ability to filter multiple values within a field
 - [ ] Option to toggle allow disjoint trees
 - [ ] Start working on treebank permutation models
