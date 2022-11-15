@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from conllu.models import TokenTree, Token, TokenList
 from typing import List, Dict
 from collections import defaultdict
+from typing import Dict, List, AnyStr
 
 
 class SentenceCleaner:
-    def __init__(self, **remove_fields):
-        self.remove_fields = remove_fields
+    def __init__(self, remove_fields: Dict[AnyStr, List] = None):
+        self.remove_fields = remove_fields if isinstance(remove_fields, dict) else {}
 
     def __call__(self, tokenlist: TokenList):
         tokenlist = self.remove_nonstandard_tokens(tokenlist)
@@ -29,6 +30,7 @@ class SentenceCleaner:
     def _remove_tokens_helper(
         self, tokenlist: TokenList, parent_id: int, _remove_ids: tuple
     ):
+        """Recursive function to remove all tokens where the id or parent is in a list of removable items"""
         child_ids = tuple(token["id"] for token in tokenlist.filter(head=parent_id))
         for idi in child_ids:
             _remove_ids += self._remove_tokens_helper(tokenlist, idi, _remove_ids)
@@ -63,7 +65,7 @@ class SentenceCleaner:
         return index_mapping
 
 
-def filter_preserve_metadata(tokenlist: TokenList, **kwargs):
+def filter_preserve_metadata(tokenlist: TokenList, **kwargs: Dict[AnyStr, List]):
     sentence = tokenlist.filter(**kwargs)
     sentence.metadata = tokenlist.metadata
     return sentence

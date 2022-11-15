@@ -37,7 +37,7 @@ def main():
         treebank = loader.iter_load_directory(args.directory)
     checker = TreebankDependencyLengthChecker(count_root=args.count_root)
     sentence_data = checker.yield_treebank_sentence_data(treebank)
-    TreebankStatistics.dump_treebank_data_as_json(sentence_data, args.datafile)
+    TreebankStatistics.dump_treebank_data_as_ndjson(sentence_data, args.datafile)
 
 
 if __name__ == "__main__":
