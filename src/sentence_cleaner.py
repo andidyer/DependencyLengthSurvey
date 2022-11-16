@@ -6,7 +6,7 @@ from typing import Dict, List, AnyStr
 
 
 class SentenceCleaner:
-    def __init__(self, remove_fields: Dict[AnyStr, List] = None):
+    def __init__(self, remove_fields):
         self.remove_fields = remove_fields if isinstance(remove_fields, dict) else {}
 
     def __call__(self, tokenlist: TokenList):
@@ -65,7 +65,7 @@ class SentenceCleaner:
         return index_mapping
 
 
-def filter_preserve_metadata(tokenlist: TokenList, **kwargs: Dict[AnyStr, List]):
+def filter_preserve_metadata(tokenlist: TokenList, **kwargs):
     sentence = tokenlist.filter(**kwargs)
     sentence.metadata = tokenlist.metadata
     return sentence

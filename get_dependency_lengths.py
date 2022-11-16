@@ -24,12 +24,15 @@ def parse_args():
     )
     parser.add_argument("--count_root", action="store_true",
                         help="Whether to count the dependency length of the root node")
+
+    subparsers = parser.add_subparsers()
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    cleaner = SentenceCleaner(upos="PUNCT")
+    cleaner = SentenceCleaner({"deprel": "punct"})
     loader = TreebankLoader(cleaner)
     if args.treebank is not None:
         treebank = loader.iter_load_treebank(args.treebank)
