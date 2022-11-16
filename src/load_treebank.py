@@ -7,11 +7,13 @@ from src.sentence_cleaner import SentenceCleaner
 
 
 class TreebankLoader:
-    def __init__(self, cleaner: SentenceCleaner = None):
+    def __init__(self, cleaner: SentenceCleaner = None, min_len: int=1, max_len: int=999):
         if isinstance(cleaner, SentenceCleaner):
             self.cleaner = cleaner
         else:
             self.cleaner = SentenceCleaner()
+        self.min_len = min_len
+        self.max_len = max_len
 
     def load_treebank(self, infile: Path):
         sentences = self.iter_load_treebank(infile)
@@ -27,7 +29,8 @@ class TreebankLoader:
             sentence_generator = conllu.parse_incr(fin)
             for sentence in sentence_generator:
                 sentence = self.cleaner(sentence)
-                if self._filter_with_sanity_checks(sentence):
+                if (self._filter_with_sanity_checks(sentence) and \
+                        self.min_len <= len(sentence) <= self.max_len):
                     yield sentence
 
     def _filter_with_sanity_checks(self, sentence: TokenList):
@@ -38,8 +41,16 @@ class TreebankLoader:
         if all(checks):
             return True
 
+    def _filter_with_length_limits(self, sentence: TokenList):
+        if self.min_len <= len(sentence) <= self.max_len:
+            return True
+        else:
+            return False
 
 class SanityChecks:
+    """
+    General sanity checks to make sure a oonllu sentence is not malformed
+    """
     @staticmethod
     def sentence_has_single_root(sentence: TokenList):
         roots = list(filter(SanityChecks._token_is_root, sentence))

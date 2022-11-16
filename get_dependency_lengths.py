@@ -25,15 +25,21 @@ def parse_args():
     parser.add_argument("--count_root", action="store_true",
                         help="Whether to count the dependency length of the root node")
 
-    subparsers = parser.add_subparsers()
+    parser.add_argument("--min_len", type=int, default=1, help="Exclude sentences with less than a given minimum number of tokens")
+    parser.add_argument("--max_len", type=int, default=999, help="Exclude sentences with more than a given maximum number of tokens")
 
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
+    # Make cleaner
     cleaner = SentenceCleaner({"deprel": "punct"})
-    loader = TreebankLoader(cleaner)
+
+    # Make loader
+    loader = TreebankLoader(cleaner, min_len=args.min_len, max_len=args.max_len)
+
     if args.treebank is not None:
         treebank = loader.iter_load_treebank(args.treebank)
     elif args.directory is not None:

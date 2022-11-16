@@ -28,17 +28,20 @@ object containing data about the sentence.
 This script can be run as follows:
 
 ```text
-usage: get_dependency_lengths.py [-h] [--treebank TREEBANK | --directory DIRECTORY] [--datafile DATAFILE] [--count_root]
+usage: get_dependency_lengths.py [-h] [--treebank TREEBANK | --directory DIRECTORY] [--datafile DATAFILE] [--count_root] [--min_len MIN_LEN] [--max_len MAX_LEN]
 
 optional arguments:
   -h, --help            show this help message and exit
   --count_root          Whether to count the dependency length of the root node
+  --min_len MIN_LEN     Exclude sentences with less than a given minimum number of tokens
+  --max_len MAX_LEN     Exclude sentences with more than a given maximum number of tokens
 
 required arguments:
   --treebank TREEBANK   Treebank to load and analyse
   --directory DIRECTORY
                         Directory to load and analyse
   --datafile DATAFILE   File to output the per-sentence statistics json to
+
 
 ```
 For example:
@@ -77,6 +80,17 @@ user$ python get_dependency_lengths.py \
 --count_root
 ```
 
+You can use the options `--min_len` and `--max_len` to exclude sentences that have 
+fewer than a minimum or more than a maximum number of tokens. For example:
+
+```shell
+user$ python get_dependency_lengths.py \
+--treebank my_treebank.conllu \
+--datafile my_output_file.ndjson \
+--min_len 5 \
+--max_len 25
+```
+
 ### The output
 
 The output of the script is a file in ndjson format containing a 
@@ -98,8 +112,11 @@ from the token with head 0 are ignored.
 - Non-standard tokens such as enhanced dependencies and 
 multiword tokens are ignored.
 
+## 
+
 ## TODO:
 - [x] Option to toggle ignore root.
+- [x] Option to filter sentences by max and min number of tokens
 - [ ] Argument for filtering tokens based on fields
 and features.
 - [ ] Ability to filter multiple values within a field
