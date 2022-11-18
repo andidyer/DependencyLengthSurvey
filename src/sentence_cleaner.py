@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import Dict, List, AnyStr
 
 
+
 class SentenceCleaner:
     def __init__(self, remove_fields):
         self.remove_fields = remove_fields if isinstance(remove_fields, dict) else {}
@@ -12,7 +13,7 @@ class SentenceCleaner:
     def __call__(self, tokenlist: TokenList):
         tokenlist = self.remove_nonstandard_tokens(tokenlist)
         tokenlist = self.remove_tokens(tokenlist)
-        tokenlist = self.fix_tree_indices(tokenlist)
+        tokenlist = fix_tree_indices(tokenlist)
         return tokenlist
 
     def remove_tokens(self, tokenlist: TokenList):
@@ -36,33 +37,35 @@ class SentenceCleaner:
             _remove_ids += self._remove_tokens_helper(tokenlist, idi, _remove_ids)
         return child_ids
 
-    def remove_nonstandard_tokens(self, tokenlist: TokenList):
+    @staticmethod
+    def remove_nonstandard_tokens(tokenlist: TokenList):
         """
         Removes any non-standard tokens, such as multi-word tokens or
         enhanced dependencies, from the sentence.
         """
         return filter_preserve_metadata(tokenlist, id=lambda x: isinstance(x, int))
 
-    def fix_tree_indices(self, tokenlist: TokenList):
-        new_tokenlist = tokenlist.copy()
 
-        index_mapping = self._make_index_mapping(new_tokenlist)
-        for i, token in enumerate(new_tokenlist):
-            token_id = token["id"]
-            token_head = token["head"]
-            new_tokenlist[i]["id"] = index_mapping[token_id]
-            new_tokenlist[i]["head"] = index_mapping[token_head]
+def make_index_mapping(tokenlist: TokenList) -> dict:
+    index_mapping = {0: 0, None: None}
+    i = 1
+    for token in tokenlist:
+        if isinstance(token["id"], int):
+            index_mapping[token["id"]] = i
+            i += 1
+    return index_mapping
 
-        return tokenlist
+def fix_tree_indices(tokenlist: TokenList):
+    new_tokenlist = tokenlist.copy()
 
-    def _make_index_mapping(self, tokenlist: TokenList) -> dict:
-        index_mapping = {0: 0, None: None}
-        i = 1
-        for token in tokenlist:
-            if isinstance(token["id"], int):
-                index_mapping[token["id"]] = i
-                i += 1
-        return index_mapping
+    index_mapping = make_index_mapping(new_tokenlist)
+    for i, token in enumerate(new_tokenlist):
+        token_id = token["id"]
+        token_head = token["head"]
+        new_tokenlist[i]["id"] = index_mapping[token_id]
+        new_tokenlist[i]["head"] = index_mapping[token_head]
+
+    return new_tokenlist
 
 
 def filter_preserve_metadata(tokenlist: TokenList, **kwargs):
