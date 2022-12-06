@@ -1,9 +1,10 @@
-from conllu.models import Token, TokenList, SentenceList
 from typing import List, Generator
+
+from conllu.models import Token, TokenList, SentenceList
 
 
 class DependencyLengthChecker:
-    """Sentence-level"""
+    """Sentence-level dependency length checker"""
 
     def __init__(self, count_root: bool = False):
         self.count_root = count_root
@@ -47,32 +48,35 @@ class DependencyLengthChecker:
                 yield self.get_pairwise_dependency_length(token)
 
 
-class TreebankDependencyLengthChecker(DependencyLengthChecker):
+class TreebankDependencyLengthChecker:
+    def __init__(self, count_root: bool = False):
+        self.sentence_checker = DependencyLengthChecker(count_root=count_root)
+
     def yield_treebank_dependency_lengths(self, treebank: SentenceList) -> Generator:
         """Yields lists of dependency lengths for all sentences in the treebank"""
         for sentence in treebank:
-            yield self.get_sentence_dependency_lengths(sentence)
+            yield self.sentence_checker.get_sentence_dependency_lengths(sentence)
 
     def yield_treebank_sum_dependency_lengths(
         self, treebank: SentenceList
     ) -> Generator:
         for sentence in treebank:
-            yield self.get_sentence_sum_dependency_length(sentence)
+            yield self.sentence_checker.get_sentence_sum_dependency_length(sentence)
 
     def yield_treebank_sentence_lengths(self, treebank: SentenceList) -> Generator:
         for sentence in treebank:
-            yield self.get_sentence_length(sentence)
+            yield self.sentence_checker.get_sentence_length(sentence)
 
     def yield_treebank_sentence_data(self, treebank: SentenceList) -> Generator:
         """yields json objects of sentence data"""
         for sentence in treebank:
             yield {
                 "sentence_id": sentence.metadata["sent_id"],
-                "sentence_length": self.get_sentence_length(sentence),
-                "sentence_sum_dependency_length": self.get_sentence_sum_dependency_length(
+                "sentence_length": self.sentence_checker.get_sentence_length(sentence),
+                "sentence_sum_dependency_length": self.sentence_checker.get_sentence_sum_dependency_length(
                     sentence
                 ),
-                "sentence_dependency_lengths": self.get_sentence_dependency_lengths(
+                "sentence_dependency_lengths": self.sentence_checker.get_sentence_dependency_lengths(
                     sentence
                 ),
             }

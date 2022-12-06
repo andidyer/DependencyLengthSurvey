@@ -1,13 +1,8 @@
-from dataclasses import dataclass
-from conllu.models import TokenTree, Token, TokenList
-from typing import List, Dict
-from collections import defaultdict
-from typing import Dict, List, AnyStr
-
+from conllu.models import TokenList
 
 
 class SentenceCleaner:
-    def __init__(self, remove_fields):
+    def __init__(self, remove_fields: dict):
         self.remove_fields = remove_fields if isinstance(remove_fields, dict) else {}
 
     def __call__(self, tokenlist: TokenList):
@@ -54,6 +49,7 @@ def make_index_mapping(tokenlist: TokenList) -> dict:
             index_mapping[token["id"]] = i
             i += 1
     return index_mapping
+
 
 def fix_tree_indices(tokenlist: TokenList):
     new_tokenlist = tokenlist.copy()
