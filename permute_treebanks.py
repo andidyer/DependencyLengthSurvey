@@ -2,6 +2,8 @@ import random
 import argparse
 from pathlib import Path
 from src.load_treebank import TreebankLoader
+from src.treebank_permutation import TreebankPermuter
+from src.utils.fileutils import FileDumper
 
 
 def parse_args():
@@ -29,12 +31,13 @@ def parse_args():
             "random_projective_fixed",
             "random_same_valency",
             "random_same_side",
+            "optimal_projective"
         ),
         help="The type of permutation to perform",
     )
 
     parser.add_argument(
-        "output_file", type=Path, help="The file to output the permuted treebank(s) to"
+        "--outfile", type=Path, help="The file to output the permuted treebank(s) to"
     )
 
     parser.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -45,7 +48,25 @@ def parse_args():
 
 
 def main():
-    pass
+    args = parse_args()
+
+    # Set random seed
+    random.seed(args.random_seed)
+
+    # Make loader
+    loader = TreebankLoader(remove_fields={"deprel": "punct"})
+
+    # Load treebank
+    treebank = loader.load_treebank(args.treebank)
+
+    # Make permuter
+    permuter = TreebankPermuter(args.permutation_mode)
+
+    # Perform treebank permutation
+    treebank_stream = permuter.yield_permute_treebank(treebank)
+
+    # Dump to file
+    FileDumper.dump_treebank_as_conllu(args.outfile, treebank_stream)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import cycle
 
-from conllu import TokenList
 from conllu.models import Token, TokenList, TokenTree, SentenceList
 
 from src.sentence_cleaner import fix_tree_indices
@@ -12,9 +11,10 @@ from src.sentence_cleaner import fix_tree_indices
 
 @dataclass
 class Node:
-    """"
+    """ "
     Utility class for constructing a tree with attention to which side branches are on
     """
+
     centre: Token
     left: T.List = field(default_factory=list)
     right: T.List = field(default_factory=list)
@@ -28,11 +28,12 @@ class Node:
 
 
 class SentencePermuter:
-    """"Object that permutes a sentence according to a given """
+    """ "Object that permutes a sentence according to a given"""
+
     random_floats_cycle = cycle(random.uniform(-1, 1) for i in range(100))
 
     def __init__(self, mode: str):
-        self.dependency_positions = self._initialize_dependency_positions()
+        self._initialize_dependency_positions()
         self.mode = self._set_permutation_function(mode)
 
     def _initialize_dependency_positions(self):
@@ -49,6 +50,8 @@ class SentencePermuter:
             self.permutation_function = self.random_same_valency_permute
         elif mode == "random_same_side":
             self.permutation_function = self.random_same_side_permute
+        elif mode == "optimal_projective":
+            self.permutation_function = self.optimal_projective_permute
         else:
             raise ValueError(
                 """Unrecognised permutation type. Choose from:\n
@@ -56,7 +59,7 @@ class SentencePermuter:
                                 - random_projective\n
                                 - random_projective_fixed\n
                                 - random_same_valency\n
-                                - random_same_side"""
+                                - optimal_projective"""
             )
 
     def permute_sentence(self, sentence: TokenList):
@@ -112,7 +115,9 @@ class SentencePermuter:
         left = []
         right = []
 
-        ordered_subtrees = sorted(tree.children, key=lambda subtree: subtree_head_position(subtree))
+        ordered_subtrees = sorted(
+            tree.children, key=lambda subtree: subtree_head_position(subtree)
+        )
         for subtree in ordered_subtrees:
             position: float = self.dependency_positions[subtree.token["deprel"]]
             if position < 0:
@@ -147,15 +152,18 @@ class SentencePermuter:
         head_position = tree.token["id"]
         shuffled_children = random.sample(tree.children, len(tree.children))
 
-
         # Find number of trees on left
-        n_left = sum(1 for subtree in shuffled_children if subtree_head_position(subtree) < head_position)
+        n_left = sum(
+            1
+            for subtree in shuffled_children
+            if subtree_head_position(subtree) < head_position
+        )
 
         for i, subtree in enumerate(shuffled_children):
             if i < n_left:
-                left.append(subtree)
+                left.append(self._random_same_valency_construct_tree(subtree))
             else:
-                right.append(subtree)
+                right.append(self._random_same_valency_construct_tree(subtree))
         random.shuffle(left)
         random.shuffle(right)
 
@@ -188,9 +196,9 @@ class SentencePermuter:
         for subtree in tree.children:
             dependent_position = subtree_head_position(subtree)
             if dependent_position < head_position:
-                left.append(subtree)
+                left.append(self._random_same_side_construct_tree(subtree))
             else:
-                right.append(subtree)
+                right.append(self._random_same_side_construct_tree(subtree))
         random.shuffle(left)
         random.shuffle(right)
 
@@ -199,26 +207,29 @@ class SentencePermuter:
 
     def optimal_projective_permute(self, sentence: TokenList):
         sentence_tree = sentence.to_tree()
-        permutation_tree = self._random_same_side_construct_tree(sentence_tree)
+        permutation_tree = self._optimal_projective_construct_tree(sentence_tree)
         new_sentence = TokenList(
             list(permutation_tree.traverse()), metadata=sentence.metadata
         )
         new_sentence = fix_tree_indices(new_sentence)
         return new_sentence
 
-    def _optimal_projective_construct_tree(self, sentence: TokenList):
+    def _optimal_projective_construct_tree(self, tree: TokenTree):
         left = []
         right = []
 
         head_position = tree.token["id"]
 
-        sorted_children = sorted(tree.children, key=lambda child: abs(subtree_head_position(child) - head_position))
+        sorted_children = sorted(
+            tree.children,
+            key=lambda child: abs(subtree_head_position(child) - head_position),
+        )
 
         for i, subtree in enumerate(sorted_children):
             if i % 2 == 0:
-                left.append(subtree)
+                left.append(self._optimal_projective_construct_tree(subtree))
             else:
-                right.append(subtree)
+                right.append(self._optimal_projective_construct_tree(subtree))
         random.shuffle(left)
         random.shuffle(right)
 
@@ -259,6 +270,7 @@ def _is_multiword_token(token: Token) -> bool:
         and token["id"][1] == "-"
         and isinstance(token["id"][2], int)
     )
+
 
 def subtree_head_position(subtree: TokenTree):
     return subtree.token["id"]

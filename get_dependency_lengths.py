@@ -46,12 +46,16 @@ def main():
     args = parse_args()
 
     # Make loader with cleaner
-    loader = TreebankLoader(remove_fields={"deprel": "punct"}, min_len=args.min_len, max_len=args.max_len)
+    loader = TreebankLoader(
+        remove_fields={"deprel": "punct"}, min_len=args.min_len, max_len=args.max_len
+    )
 
     if args.treebank is not None:
         treebank = loader.iter_load_treebank(args.treebank)
     elif args.directory is not None:
-        raise NotImplementedError("Not yet sure what to do about processing a directory")
+        raise NotImplementedError(
+            "Not yet sure what to do about processing a directory"
+        )
     else:
         raise ValueError("Must provide either a treebank file or a directory")
     checker = TreebankDependencyLengthChecker(count_root=args.count_root)

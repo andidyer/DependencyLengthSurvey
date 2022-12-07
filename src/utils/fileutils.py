@@ -6,7 +6,6 @@ from conllu import Token, TokenList, TokenTree, SentenceList
 
 
 class FileDumper:
-
     @staticmethod
     def dump_treebank_data_as_json(treebank_data: Iterable[dict], outfile: Path):
         with open(outfile, "w", encoding="utf-8") as fout:
@@ -26,7 +25,9 @@ class FileDumper:
             writer.writerows(treebank_data)
 
     @staticmethod
-    def dump_treebank_as_conllu(outfile: Path, treebank: Union[Iterable[TokenList], SentenceList]):
+    def dump_treebank_as_conllu(
+        outfile: Path, treebank: Union[Iterable[TokenList], SentenceList]
+    ):
         with open(outfile, "w", encoding="utf-8") as fout:
             for sentence in treebank:
                 print(sentence.serialize(), file=fout)
