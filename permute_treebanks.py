@@ -19,6 +19,7 @@ def parse_args():
         "--directory", type=Path, help="Directory to load and permute"
     )
 
+
     parser.add_argument(
         "--random_seed", type=int, default=0, help="Random seed for permutation"
     )
@@ -31,7 +32,9 @@ def parse_args():
             "random_projective_fixed",
             "random_same_valency",
             "random_same_side",
-            "optimal_projective"
+            "optimal_projective",
+            "optimal_projective_weight",
+            "original_order"
         ),
         help="The type of permutation to perform",
     )

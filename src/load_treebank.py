@@ -1,12 +1,13 @@
 from pathlib import Path
 
 import conllu
-from conllu.models import Token, TokenList
+from conllu.models import Token, TokenList, SentenceList
 
 from src.sentence_cleaner import SentenceCleaner
 
 
 class TreebankLoader:
+    """""Loads a Treebank"""
     def __init__(
         self, remove_fields: dict = None, min_len: int = 1, max_len: int = 999
     ):
@@ -16,7 +17,7 @@ class TreebankLoader:
 
     def load_treebank(self, infile: Path):
         sentences = self.iter_load_treebank(infile)
-        return list(sentences)
+        return SentenceList(sentences)
 
     def iter_load_treebank(self, infile: Path):
         with open(infile, encoding="utf-8") as fin:
