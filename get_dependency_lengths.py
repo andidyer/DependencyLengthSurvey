@@ -8,28 +8,26 @@ from src.load_treebank import TreebankLoader
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    required = parser.add_argument_group("required arguments")
-    treebank_source = required.add_mutually_exclusive_group()
-    treebank_source.add_argument("--treebank", help="Treebank to load and analyse")
-    treebank_source.add_argument("--directory", help="Directory to load and analyse")
+    required = parser.add_argument_group("required arguments"    optional = parser.add_argument_group("optional arguments")
+    required.add_argument("--treebank", help="Treebank to load and analyse")
     required.add_argument(
         "--outfile",
         type=Path,
         help="File to output the per-sentence statistics json to",
     )
-    parser.add_argument(
+    optional.add_argument(
         "--count_root",
         action="store_true",
         help="Whether to count the dependency length of the root node",
     )
 
-    parser.add_argument(
+    optional.add_argument(
         "--min_len",
         type=int,
         default=1,
         help="Exclude sentences with less than a given minimum number of tokens",
     )
-    parser.add_argument(
+    optional.add_argument(
         "--max_len",
         type=int,
         default=999,
