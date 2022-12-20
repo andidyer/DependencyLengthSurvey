@@ -8,7 +8,8 @@ from src.load_treebank import TreebankLoader
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    required = parser.add_argument_group("required arguments"    optional = parser.add_argument_group("optional arguments")
+    required = parser.add_argument_group("required arguments")
+    optional = parser.add_argument_group("optional arguments")
     required.add_argument("--treebank", help="Treebank to load and analyse")
     required.add_argument(
         "--outfile",
