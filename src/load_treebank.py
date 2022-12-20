@@ -7,7 +7,8 @@ from src.sentence_cleaner import SentenceCleaner
 
 
 class TreebankLoader:
-    """""Loads a Treebank"""
+    """ ""Loads a Treebank"""
+
     def __init__(
         self, remove_fields: dict = None, min_len: int = 1, max_len: int = 999
     ):

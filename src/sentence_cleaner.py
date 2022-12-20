@@ -1,15 +1,20 @@
 from conllu.models import TokenList
+from src.utils.abstractclasses import SentencePreProcessor
+from src.utils.treeutils import fix_token_indices
 
 
-class SentenceCleaner:
+class SentenceCleaner(SentencePreProcessor):
     def __init__(self, remove_fields: dict):
         self.remove_fields = remove_fields if isinstance(remove_fields, dict) else {}
 
-    def __call__(self, tokenlist: TokenList):
-        tokenlist = self.remove_nonstandard_tokens(tokenlist)
-        tokenlist = self.remove_tokens(tokenlist)
-        tokenlist = fix_tree_indices(tokenlist)
-        return tokenlist
+    def __call__(self, sentence: TokenList):
+        return self.process_sentence(sentence)
+
+    def process_sentence(self, sentence: TokenList, **kwargs):
+        sentence = self.remove_nonstandard_tokens(sentence)
+        sentence = self.remove_tokens(sentence)
+        sentence = fix_token_indices(sentence)
+        return sentence
 
     def remove_tokens(self, tokenlist: TokenList):
         _remove_ids = tuple(
@@ -39,29 +44,6 @@ class SentenceCleaner:
         enhanced dependencies, from the sentence.
         """
         return filter_preserve_metadata(tokenlist, id=lambda x: isinstance(x, int))
-
-
-def make_index_mapping(tokenlist: TokenList) -> dict:
-    index_mapping = {0: 0, None: None}
-    i = 1
-    for token in tokenlist:
-        if isinstance(token["id"], int):
-            index_mapping[token["id"]] = i
-            i += 1
-    return index_mapping
-
-
-def fix_tree_indices(tokenlist: TokenList):
-    new_tokenlist = tokenlist.copy()
-
-    index_mapping = make_index_mapping(new_tokenlist)
-    for i, token in enumerate(new_tokenlist):
-        token_id = token["id"]
-        token_head = token["head"]
-        new_tokenlist[i]["id"] = index_mapping[token_id]
-        new_tokenlist[i]["head"] = index_mapping[token_head]
-
-    return new_tokenlist
 
 
 def filter_preserve_metadata(tokenlist: TokenList, **kwargs):

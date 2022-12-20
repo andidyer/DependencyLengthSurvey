@@ -2,7 +2,8 @@ import random
 import argparse
 from pathlib import Path
 from src.load_treebank import TreebankLoader
-from src.treebank_permutation import TreebankPermuter
+from src.sentence_permuter import SentencePermuter
+from src.treebank_processor import TreebankProcessor, FileProcessor
 from src.utils.fileutils import FileDumper
 
 
@@ -19,7 +20,6 @@ def parse_args():
         "--directory", type=Path, help="Directory to load and permute"
     )
 
-
     parser.add_argument(
         "--random_seed", type=int, default=0, help="Random seed for permutation"
     )
@@ -34,13 +34,26 @@ def parse_args():
             "random_same_side",
             "optimal_projective",
             "optimal_projective_weight",
-            "original_order"
+            "original_order",
         ),
         help="The type of permutation to perform",
     )
 
     parser.add_argument(
         "--outfile", type=Path, help="The file to output the permuted treebank(s) to"
+    )
+
+    parser.add_argument(
+        "--min_len",
+        type=int,
+        default=1,
+        help="Exclude sentences with less than a given minimum number of tokens",
+    )
+    parser.add_argument(
+        "--max_len",
+        type=int,
+        default=999,
+        help="Exclude sentences with more than a given maximum number of tokens",
     )
 
     parser.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -56,20 +69,20 @@ def main():
     # Set random seed
     random.seed(args.random_seed)
 
-    # Make loader
-    loader = TreebankLoader(remove_fields={"deprel": "punct"})
-
-    # Load treebank
-    treebank = loader.load_treebank(args.treebank)
+    # Make loader with cleaner
+    loader = TreebankLoader(remove_fields={"deprel": "punct"}, min_len=args.min_len, max_len=args.max_len)
 
     # Make permuter
-    permuter = TreebankPermuter(args.permutation_mode)
+    permuter = SentencePermuter(args.permutation_mode)
 
-    # Perform treebank permutation
-    treebank_stream = permuter.yield_permute_treebank(treebank)
+    # Make treebank processor
+    treebank_processor = TreebankProcessor(permuter)
 
-    # Dump to file
-    FileDumper.dump_treebank_as_conllu(args.outfile, treebank_stream)
+    # Make file processor
+    file_processor = FileProcessor(loader, treebank_processor)
+
+    # Process and dump to file
+    file_processor.process_file(args.treebank, args.outfile)
 
 
 if __name__ == "__main__":

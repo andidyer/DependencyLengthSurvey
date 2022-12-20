@@ -1,8 +1,32 @@
-from conllu import TokenList, TokenTree
+from conllu import Token, TokenList, TokenTree
+from typing import List
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Node:
+    """ "
+    Utility class for constructing a tree with attention to which side branches are on
+    """
+
+    centre: Token
+    left: List = field(default_factory=list)
+    right: List = field(default_factory=list)
+
+    def traverse(self):
+        for branch in self.left:
+            yield from branch.traverse()
+        yield self.centre
+        for branch in self.right:
+            yield from branch.traverse()
+
+    @classmethod
+    def make_node(cls, centre: Token, left: List[TokenTree], right: List[TokenTree]):
+        return Node(centre, left, right)
 
 
 def get_tree_weight(tree: TokenTree):
-    """"Recursive function for getting the total number of dependents in a tree"""
+    """ "Recursive function for getting the total number of dependents in a tree"""
     weight = 0
     for branch in tree.children:
         weight += get_tree_weight(branch)
@@ -21,7 +45,7 @@ def make_index_mapping(tokenlist: TokenList) -> dict:
     return index_mapping
 
 
-def fix_tree_indices(tokenlist: TokenList):
+def fix_token_indices(tokenlist: TokenList):
     new_tokenlist = tokenlist.copy()
 
     index_mapping = make_index_mapping(new_tokenlist)

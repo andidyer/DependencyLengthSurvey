@@ -1,7 +1,7 @@
 import pytest
 from conllu.models import Token, TokenList
 
-from src.treebank_permutation import reorder_tokens
+from src.sentence_permuter import reorder_tokens
 
 
 @pytest.fixture
