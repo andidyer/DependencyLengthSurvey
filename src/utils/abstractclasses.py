@@ -23,5 +23,7 @@ class SentenceMainProcessor(SentenceProcessor):
 
 class TreebankProcessor(ABC):
     @abstractmethod
-    def process_treebank(self, treebank: Union[SentenceList, Iterable[TokenList]], **kwargs):
+    def process_treebank(
+        self, treebank: Union[SentenceList, Iterable[TokenList]], **kwargs
+    ):
         pass

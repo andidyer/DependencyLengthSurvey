@@ -4,7 +4,6 @@ from pathlib import Path
 from src.load_treebank import TreebankLoader
 from src.sentence_permuter import SentencePermuter
 from src.treebank_processor import TreebankProcessor, FileProcessor
-from src.utils.fileutils import FileDumper
 
 
 def parse_args():
@@ -15,7 +14,7 @@ def parse_args():
 
     required.add_argument(
         "--treebank", type=Path, help="Treebank to load and permute"
-
+    )
     optional.add_argument(
         "--random_seed", type=int, default=0, help="Random seed for permutation"
     )
