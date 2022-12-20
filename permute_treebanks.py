@@ -11,19 +11,15 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     required = parser.add_argument_group("required arguments")
+    optional = parser.add_argument_group("optional arguments")
 
-    treebank_source = required.add_mutually_exclusive_group()
-    treebank_source.add_argument(
+    required.add_argument(
         "--treebank", type=Path, help="Treebank to load and permute"
-    )
-    treebank_source.add_argument(
-        "--directory", type=Path, help="Directory to load and permute"
-    )
 
-    parser.add_argument(
+    optional.add_argument(
         "--random_seed", type=int, default=0, help="Random seed for permutation"
     )
-    parser.add_argument(
+    required.add_argument(
         "--permutation_mode",
         type=str,
         choices=(
@@ -39,24 +35,24 @@ def parse_args():
         help="The type of permutation to perform",
     )
 
-    parser.add_argument(
+    required.add_argument(
         "--outfile", type=Path, help="The file to output the permuted treebank(s) to"
     )
 
-    parser.add_argument(
+    optional.add_argument(
         "--min_len",
         type=int,
         default=1,
         help="Exclude sentences with less than a given minimum number of tokens",
     )
-    parser.add_argument(
+    optional.add_argument(
         "--max_len",
         type=int,
         default=999,
         help="Exclude sentences with more than a given maximum number of tokens",
     )
 
-    parser.add_argument("--verbose", action="store_true", help="Verbosity")
+    optional.add_argument("--verbose", action="store_true", help="Verbosity")
 
     args = parser.parse_args()
 
