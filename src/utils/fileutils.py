@@ -6,6 +6,7 @@ from conllu import Token, TokenList, TokenTree, SentenceList
 
 
 class FileDumper:
+    # DEPRECATED
     @staticmethod
     def dump_treebank_data_as_json(treebank_data: Iterable[dict], outfile: Path):
         with open(outfile, "w", encoding="utf-8") as fout:
@@ -31,3 +32,9 @@ class FileDumper:
         with open(outfile, "w", encoding="utf-8") as fout:
             for sentence in treebank:
                 print(sentence.serialize(), file=fout)
+
+def load_ndjson(ndjson_file: Path):
+    with open(ndjson_file, encoding="utf-8") as fin:
+        return list(
+            json.loads(line.strip()) for line in fin
+        )

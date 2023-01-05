@@ -1,18 +1,8 @@
-import json
-from pathlib import Path
-from typing import List, Iterator, Iterable, Dict, Union
-from conllu import Token, TokenList, SentenceList
+from typing import List, Dict, Union
 
-from src.utils.abstractclasses import (
-    SentenceProcessor,
-    SentencePreProcessor,
-    SentenceMainProcessor,
-)
-from src.load_treebank import TreebankLoader
-from src.sentence_cleaner import SentenceCleaner
-from src.utils.fileutils import FileDumper
-from src.utils.abstractclasses import SentenceProcessor, SentenceMainProcessor
-from pathlib import Path
+from conllu import TokenList, SentenceList
+
+from src.utils.abstractclasses import SentenceMainProcessor
 
 
 class TreebankProcessor:
@@ -24,6 +14,7 @@ class TreebankProcessor:
 
     def __init__(self, sentence_processor: SentenceMainProcessor):
         self.sentence_processor = sentence_processor
+        self.fileext = self.sentence_processor.fileext
 
     def process_treebank(self, treebank: SentenceList, **kwargs):
         """ "Reads a set of conllu files and executes the function on them."""

@@ -1,9 +1,10 @@
 import argparse
 from pathlib import Path
 
-from src.sentence_analyzer import SentenceAnalyzer
-from src.treebank_processor import TreebankProcessor, FileProcessor
+from src.file_processor import FileProcessor
 from src.load_treebank import TreebankLoader
+from src.sentence_analyzer import SentenceAnalyzer
+from src.treebank_processor import TreebankProcessor
 
 
 def parse_args():
@@ -20,6 +21,13 @@ def parse_args():
         "--count_root",
         action="store_true",
         help="Whether to count the dependency length of the root node",
+    )
+
+    optional.add_argument(
+        "--remove_config",
+        type=Path,
+        default=None,
+        help="ndjson format list of token properties to exclude"
     )
 
     optional.add_argument(
@@ -41,10 +49,16 @@ def parse_args():
 def main():
     args = parse_args()
 
+    if args.remove_config:
+        remove_config = load_ndjson(args.remove_config)
+    else:
+        remove_config = None
+
     # Make loader with cleaner
     loader = TreebankLoader(
-        remove_fields={"deprel": "punct"}, min_len=args.min_len, max_len=args.max_len
-    )
+        remove_config=remove_config,
+        min_len=args.min_len,
+        max_len=args.max_len)
 
     # Make sentence analyzer
     analyzer = SentenceAnalyzer(count_root=args.count_root)

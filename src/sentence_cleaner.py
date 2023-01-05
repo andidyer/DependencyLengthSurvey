@@ -1,11 +1,13 @@
 from conllu.models import TokenList
 from src.utils.abstractclasses import SentencePreProcessor
 from src.utils.treeutils import fix_token_indices
+from typing import List, Dict, Tuple
+import logging
 
 
 class SentenceCleaner(SentencePreProcessor):
-    def __init__(self, remove_fields: dict):
-        self.remove_fields = remove_fields if isinstance(remove_fields, dict) else {}
+    def __init__(self, remove_config: List[Dict]):
+        self.remove_config = remove_config if isinstance(remove_config, list) else []
 
     def __call__(self, sentence: TokenList):
         return self.process_sentence(sentence)
@@ -17,25 +19,33 @@ class SentenceCleaner(SentencePreProcessor):
         return sentence
 
     def remove_tokens(self, tokenlist: TokenList):
-        _remove_ids = tuple(
-            token["id"] for token in tokenlist.filter(**self.remove_fields)
-        )
-        for idi in _remove_ids:
-            _remove_ids += self._remove_tokens_helper(tokenlist, idi, _remove_ids)
+
+        remove_ids = set()
+
+        # Find ids of tokens that would initially be removed by the filters
+        for filter_item in self.remove_config:
+            ids = (token["id"] for token in tokenlist.filter(**filter_item))
+            remove_ids.update(ids)
+
+        # While loop to find tokens in subtrees of removed items
+        stack = list(remove_ids)    # Initialise as remove ids found at top level
+        queue: List[Tuple] = [(token["id"], token["head"]) for token in tokenlist]
+
+        while stack:
+
+            new_ids = []
+            for i, (dep_id, head_id) in enumerate(queue):
+                if head_id in stack:
+                    new_ids.append(dep_id)
+            remove_ids.update(stack)
+            stack = new_ids     # Terminate when there are no new ids
+            queue = list((di, hi) for (di, hi) in queue if di not in stack)
+
         tokenlist = filter_preserve_metadata(
-            tokenlist, id=lambda x: x not in _remove_ids
+            tokenlist, id=lambda x: x not in remove_ids
         )
 
         return tokenlist
-
-    def _remove_tokens_helper(
-        self, tokenlist: TokenList, parent_id: int, _remove_ids: tuple
-    ):
-        """Recursive function to remove all tokens where the id or parent is in a list of removable items"""
-        child_ids = tuple(token["id"] for token in tokenlist.filter(head=parent_id))
-        for idi in child_ids:
-            _remove_ids += self._remove_tokens_helper(tokenlist, idi, _remove_ids)
-        return child_ids
 
     @staticmethod
     def remove_nonstandard_tokens(tokenlist: TokenList):

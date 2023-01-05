@@ -1,7 +1,10 @@
 import json
+import glob
+import os
+import logging
 
 from typing import Union, Dict, Iterable
-from pathlib import Path
+from pathlib import Path, PurePath
 from conllu import TokenList, SentenceList
 
 from src.treebank_processor import TreebankProcessor
@@ -19,6 +22,7 @@ class FileProcessor:
     def __init__(self, loader: TreebankLoader, treebank_processor: TreebankProcessor):
         self.loader = loader
         self.treebank_processor = treebank_processor
+        self.fileext = self.treebank_processor.fileext
 
     def load_conllu_file(self, infile: Path):
         return self.loader.load_treebank(infile)
@@ -58,3 +62,29 @@ class FileProcessor:
         input_treebank = self.load_conllu_file(infile)
         processed_treebank = self.process_treebank(input_treebank)
         self.dump_to_file(processed_treebank, outfile)
+
+    def process_glob(self, indir: Path, glob_pattern: str, outdir: Path):
+        """
+        Does the IO process on a set of files specified by the glob rather than
+        an individual file.
+
+        Can only direct new files to a specified directory while preserving sub-
+        directory structure.
+        """
+        indir_path = Path(indir)
+        infiles = indir_path.glob(glob_pattern)
+        for infile in infiles:
+            logging.info(f"Processing file: {infile}")
+            infile_relpath = Path(infile).relative_to(indir)
+            parent = infile_relpath.parent
+            stem = infile_relpath.stem
+            extension = self.fileext
+            outfile_parent = Path(outdir, parent)
+            outfile_path = Path(outfile_parent, stem+extension)
+
+            if not outfile_parent.exists():
+                logging.info(f"Making parent path: {outfile_parent}")
+                outfile_parent.mkdir(parents=True)
+
+            self.process_file(infile, outfile_path)
+

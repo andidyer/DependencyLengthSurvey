@@ -11,6 +11,7 @@ from src.utils.abstractclasses import SentenceMainProcessor
 
 class SentencePermuter(SentenceMainProcessor):
     """ "Object that permutes a sentence according to a given"""
+    fileext = ".conllu"
 
     random_floats_cycle = cycle(random.uniform(-1, 1) for i in range(100))
 
@@ -251,25 +252,6 @@ class SentencePermuter(SentenceMainProcessor):
 
         permutation_tree = Node.make_node(centre=tree.token, left=left, right=right)
         return permutation_tree
-
-
-class TreebankPermuter:
-    def __init__(self, mode: str, prefix: str = ""):
-        self.sentence_permuter = self._get_sentence_permuter(mode)
-        self.prefix = prefix
-        self.mode = mode
-
-    @staticmethod
-    def _get_sentence_permuter(mode):
-        return SentencePermuter(mode)
-
-    def yield_permute_treebank(self, treebank: SentenceList):
-        for sentence in treebank:
-            permuted_sentence = self.sentence_permuter.process_sentence(sentence)
-            permuted_sentence.metadata["sent_id"] = (
-                self.prefix + permuted_sentence.metadata["sent_id"]
-            )
-            yield permuted_sentence
 
 
 def _is_enhanced_dependency(token: Token) -> bool:

@@ -62,12 +62,12 @@ def expected_output2():
 
 @pytest.fixture
 def cleaner1():
-    return SentenceCleaner(upos="PUNCT")
+    return SentenceCleaner([{"upos": "PUNCT"}])
 
 
 @pytest.fixture
 def cleaner2():
-    return SentenceCleaner(deprel="parataxis")
+    return SentenceCleaner([{"deprel": "parataxis"}])
 
 
 def test_clean_sentence1(cleaner1, sentence, expected_output1):
