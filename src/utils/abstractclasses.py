@@ -20,10 +20,3 @@ class SentenceMainProcessor(SentenceProcessor):
     def process_sentence(self, sentence: TokenList, **kwargs):
         pass
 
-
-class TreebankProcessor(ABC):
-    @abstractmethod
-    def process_treebank(
-        self, treebank: Union[SentenceList, Iterable[TokenList]], **kwargs
-    ):
-        pass
