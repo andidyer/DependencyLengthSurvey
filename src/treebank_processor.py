@@ -1,3 +1,4 @@
+import logging
 from typing import List, Dict, Union
 from abc import ABC, abstractmethod
 
@@ -21,16 +22,19 @@ class TreebankProcessor(ABC):
 
 
 class TreebankPermuter(TreebankProcessor):
-    def __init__(self, sentence_processor: SentenceMainProcessor):
+    def __init__(self, sentence_processor: SentenceMainProcessor, n_times=1):
         super().__init__(sentence_processor)
         self.fileext = ".conllu"
+        self.n_times = n_times
 
-    def process_treebank(self, treebank: SentenceList, n_times=1, **kwargs):
+    def process_treebank(self, treebank: SentenceList, **kwargs):
         processed_sentences = []
-        for i in range(n_times):
+        for i in range(self.n_times):
+            logging.debug(f"Processed treebank {i+1} times")
             processed_sentences.extend(
                 self.process_treebank_inner(treebank, **kwargs)
             )
+            logging.debug(f"{len(processed_sentences)} sentences")
 
         return processed_sentences
 

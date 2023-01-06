@@ -6,7 +6,7 @@ import logging
 from src.file_processor import FileProcessor
 from src.load_treebank import TreebankLoader
 from src.sentence_permuter import SentencePermuter
-from src.treebank_processor import TreebankProcessor
+from src.treebank_processor import TreebankPermuter
 from src.utils.fileutils import load_ndjson
 
 logging.basicConfig(level=logging.DEBUG)
@@ -81,6 +81,8 @@ def parse_args():
         help="Exclude sentences with more than a given maximum number of tokens",
     )
 
+    optional.add_argument("--n_times", type=int, default=1, help="Number of times to perform the permutation action on each treebank")
+
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
 
     args = parser.parse_args()
@@ -109,7 +111,7 @@ def main():
     permuter = SentencePermuter(args.permutation_mode)
 
     # Make treebank processor
-    treebank_processor = TreebankProcessor(permuter)
+    treebank_processor = TreebankPermuter(permuter, n_times=args.n_times)
 
     # Make file processor
     file_processor = FileProcessor(loader, treebank_processor)

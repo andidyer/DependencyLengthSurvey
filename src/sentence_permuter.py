@@ -2,6 +2,7 @@ import random
 from typing import Callable
 from collections import defaultdict
 from itertools import cycle
+import warnings
 
 from conllu.models import Token, TokenList, TokenTree, SentenceList
 
@@ -48,7 +49,11 @@ class SentencePermuter(SentenceMainProcessor):
                                 - original_order"""
             )
 
-    def process_sentence(self, sentence: TokenList, printable=False, **kwargs):
+        if mode == "random_projective_fixed":
+            warnings.warn(f"{mode} is deprecated as it does not apply consistent fixed rules across treebanks",
+                          DeprecationWarning)
+
+    def process_sentence(self, sentence: TokenList, **kwargs):
         permuted_sentence = self.permutation_function(sentence)
         return permuted_sentence
 
