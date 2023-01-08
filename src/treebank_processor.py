@@ -22,27 +22,18 @@ class TreebankProcessor(ABC):
 
 
 class TreebankPermuter(TreebankProcessor):
-    def __init__(self, sentence_processor: SentenceMainProcessor, n_times=1):
+    def __init__(self, sentence_processor: SentenceMainProcessor):
         super().__init__(sentence_processor)
         self.fileext = ".conllu"
-        self.n_times = n_times
 
     def process_treebank(self, treebank: SentenceList, **kwargs):
         processed_sentences = []
-        for i in range(self.n_times):
-            logging.debug(f"Processed treebank {i+1} times")
-            processed_sentences.extend(
-                self.process_treebank_inner(treebank, **kwargs)
-            )
-            logging.debug(f"{len(processed_sentences)} sentences")
-
-        return processed_sentences
-
-    def process_treebank_inner(self, treebank: SentenceList, **kwargs):
         for sentence in treebank:
-            yield(
+            processed_sentences.append(
                 self.sentence_processor.process_sentence(sentence, **kwargs)
             )
+
+        return processed_sentences
 
 
 class TreebankAnalyzer(TreebankProcessor):

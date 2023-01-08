@@ -1,8 +1,8 @@
 import random
-from typing import Callable
+from typing import Callable, List, Int, Dict
 from collections import defaultdict
 from itertools import cycle
-import warnings
+from abc import ABC, abstractmethod
 
 from conllu.models import Token, TokenList, TokenTree, SentenceList
 
@@ -11,269 +11,197 @@ from src.utils.abstractclasses import SentenceMainProcessor
 
 
 class SentencePermuter(SentenceMainProcessor):
-    """ "Object that permutes a sentence according to a given"""
     fileext = ".conllu"
 
-    random_floats_cycle = cycle(random.uniform(-1, 1) for i in range(100))
-
-    def __init__(self, mode: str):
-        self._initialize_dependency_positions()
-        self.mode = self._set_permutation_function(mode)
-
-    def _initialize_dependency_positions(self):
-        self.dependency_positions = defaultdict(lambda: next(self.random_floats_cycle))
-
-    def _set_permutation_function(self, mode: str):
-        mode_dict = {
-            "random_nonprojective": self.random_nonprojective_permute,
-            "random_projective": self.random_projective_permute,
-            "random_projective_fixed": self.random_projective_fixed_permute,
-            "random_same_valency": self.random_same_valency_permute,
-            "random_same_side": self.random_same_side_permute,
-            "optimal_projective": self.optimal_projective_permute,
-            "optimal_projective_weight": self.optimal_projective_weight_permute,
-            "original_order": self.original_order_permute,
-        }
-        try:
-            self.permutation_function = mode_dict[mode]
-        except KeyError:
-            raise KeyError(
-                """Unrecognised permutation type. Choose from:\n
-                                - random_nonprojective
-                                - random_projective
-                                - random_projective_fixed
-                                - random_same_valency
-                                - random_same_side
-                                - optimal_projective
-                                - optimal_projective_weight
-                                - original_order"""
-            )
-
-        if mode == "random_projective_fixed":
-            warnings.warn(f"{mode} is deprecated as it does not apply consistent fixed rules across treebanks",
-                          DeprecationWarning)
+    _shuffle_left = False
+    _shuffle_right = False
+    _reverse_left = False
+    _reverse_right = False
 
     def process_sentence(self, sentence: TokenList, **kwargs):
         permuted_sentence = self.permutation_function(sentence)
         return permuted_sentence
 
-    def _sentence_permute_base(
-        self, permutation_inner_function: Callable, sentence: TokenList, **kwargs
-    ):
+    def permutation_function(self, sentence: TokenList):
         sentence_tree = sentence.to_tree()
-        permutation_tree = permutation_inner_function(sentence_tree, **kwargs)
+        permutation_tree = self.build_tree(sentence_tree)
         new_sentence = TokenList(
             list(permutation_tree.traverse()), metadata=sentence.metadata
         )
         new_sentence = fix_token_indices(new_sentence)
         return new_sentence
 
-    def random_nonprojective_permute(self, sentence: TokenList):
-        """permutes a sentence completely randomly with no regard for projectivity"""
-        randomized_tokens = random.sample(sentence, k=len(sentence))
-        new_sentence = TokenList(randomized_tokens, metadata=sentence.metadata)
-        new_sentence = fix_token_indices(new_sentence)
-        return new_sentence
-
-    def random_projective_permute(self, sentence: TokenList):
-        """permutes a sentence in random projective order"""
-        # Make tree from sentence root
-        return self._sentence_permute_base(
-            self._random_projective_construct_tree, sentence
-        )
-
-    def _random_projective_construct_tree(self, tree: TokenTree):
-
+    def build_tree(self, tokentree: TokenTree):
         left = []
         right = []
 
-        for subtree in tree.children:
-            rand = next(self.random_floats_cycle)
-            if rand < 0:
-                left.append(self._random_projective_construct_tree(subtree))
-            else:
-                right.append(self._random_projective_construct_tree(subtree))
-        random.shuffle(left)
-        random.shuffle(right)
+        children = self._ordering_function(tokentree.children)
 
-        permutation_tree = Node.make_node(centre=tree.token, left=left, right=right)
+        for i, subtree in enumerate(children):
+            new_branch = self.build_tree(subtree)
+            branch_direction: int = self._directionality_function(subtree)
+
+            if branch_direction < 0:
+                left.append(new_branch)
+            elif branch_direction > 0:
+                right.append(new_branch)
+            else:
+                raise ValueError("Directionality function must return [-1,1]")
+
+        if self._shuffle_left:
+            random.shuffle(left)
+        if self._shuffle_right:
+            random.shuffle(right)
+        if self._reverse_left:
+            left.reverse()
+        if self._reverse_right:
+            right.reverse()
+
+        permutation_tree = Node.make_node(centre=tokentree.token, left=left, right=right)
         return permutation_tree
 
-    def random_projective_fixed_permute(self, sentence: TokenList):
-        """permutes a sentence in a projective order randomised according to dependency type"""
-        return self._sentence_permute_base(
-            self._random_projective_fixed_construct_tree, sentence
-        )
+    def _directionality_function(self, subtree: TokenTree) -> Int:
+        # Must be overriden with a function that takes subtree as an argument and returns [-1,1]
+        head_position = subtree.token["head"]
+        dependent_position = subtree.token["id"]
 
-    def _random_projective_fixed_construct_tree(self, tree: TokenTree):
-
-        left = []
-        right = []
-
-        ordered_subtrees = sorted(
-            tree.children, key=lambda subtree: subtree_head_position(subtree)
-        )
-        for subtree in ordered_subtrees:
-            position: float = self.dependency_positions[subtree.token["deprel"]]
-            if position < 0:
-                left.append(self._random_projective_fixed_construct_tree(subtree))
-            else:
-                right.append(self._random_projective_fixed_construct_tree(subtree))
-
-        permutation_tree = Node.make_node(centre=tree.token, left=left, right=right)
-        return permutation_tree
-
-    def random_same_valency_permute(self, sentence: TokenList):
-        """
-        :param sentence: A tokenlist sentence
-        :return: A new permuted sentence
-
-        Permutes the sentence randomly with the constraint that any head must have the same number of subtrees on each
-        side as in the original sentence.
-        """
-        return self._sentence_permute_base(
-            self._random_same_valency_construct_tree, sentence
-        )
-
-    def _random_same_valency_construct_tree(self, tree: TokenTree):
-
-        left = []
-        right = []
-
-        head_position = tree.token["id"]
-        shuffled_children = random.sample(tree.children, len(tree.children))
-
-        # Find number of trees on left
-        n_left = sum(
-            1
-            for subtree in shuffled_children
-            if subtree_head_position(subtree) < head_position
-        )
-
-        for i, subtree in enumerate(shuffled_children):
-            if i < n_left:
-                left.append(self._random_same_valency_construct_tree(subtree))
-            else:
-                right.append(self._random_same_valency_construct_tree(subtree))
-        random.shuffle(left)
-        random.shuffle(right)
-
-        permutation_tree = Node.make_node(centre=tree.token, left=left, right=right)
-        return permutation_tree
-
-    def random_same_side_permute(self, sentence: TokenList):
-        """
-        :param sentence: A tokenlist sentence
-        :return: A new permuted sentence
-
-        Permutes the sentence randomly with the constraint that any node must be on the same side of
-        its head as in the original sentence.
-        """
-        return self._sentence_permute_base(
-            self._random_same_side_construct_tree, sentence
-        )
-
-    def _random_same_side_construct_tree(self, tree: TokenTree):
-
-        left = []
-        right = []
-
-        head_position = tree.token["id"]
-
-        for subtree in tree.children:
-            dependent_position = subtree_head_position(subtree)
-            if dependent_position < head_position:
-                left.append(self._random_same_side_construct_tree(subtree))
-            else:
-                right.append(self._random_same_side_construct_tree(subtree))
-        random.shuffle(left)
-        random.shuffle(right)
-
-        permutation_tree = Node.make_node(centre=tree.token, left=left, right=right)
-        return permutation_tree
-
-    def optimal_projective_permute(self, sentence: TokenList):
-        return self._sentence_permute_base(
-            self._optimal_projective_construct_tree, sentence, metric="distance"
-        )
-
-    def optimal_projective_weight_permute(self, sentence: TokenList):
-        return self._sentence_permute_base(
-            self._optimal_projective_construct_tree, sentence, metric="weight"
-        )
-
-    def _optimal_projective_construct_tree(self, tree: TokenTree, metric="distance"):
-        left = []
-        right = []
-
-        head_position = tree.token["id"]
-
-        if metric == "distance":
-            sorting_key = lambda child: abs(
-                subtree_head_position(child) - head_position
-            )
-        elif metric == "weight":
-            sorting_key = get_tree_weight
+        if dependent_position < head_position:
+            return -1
         else:
-            raise ValueError("Invalid distance metric")
+            return 1
 
-        sorted_children = sorted(
-            tree.children,
-            key=sorting_key,
-        )
+    def _ordering_function(self, tree_children: List[TokenTree]):
+        # Override this as necessary
+        return tree_children
 
-        for i, subtree in enumerate(sorted_children):
-            if i % 2 == 0:
-                left.append(
-                    self._optimal_projective_construct_tree(subtree, metric=metric)
-                )
-            else:
-                right.append(
-                    self._optimal_projective_construct_tree(subtree, metric=metric)
-                )
-        # Reverse left so that shortest are closer to head
-        left = left[::-1]
 
-        permutation_tree = Node.make_node(centre=tree.token, left=left, right=right)
-        return permutation_tree
+class RandomProjectivePermuter(SentencePermuter):
 
-    def original_order_permute(self, sentence: TokenList):
-        return self._sentence_permute_base(
-            self._original_order_construct_tree, sentence
-        )
+    _shuffle_left = True
+    _shuffle_right = True
 
-    def _original_order_construct_tree(self, tree: TokenTree):
+    def _directionality_function(self, subtree: TokenTree, **kwargs) -> Int:
+        return random.choice([-1, 1])
+
+
+class RandomSameSidePermuter(SentencePermuter):
+    """Keeps all nodes on same side but shuffles order"""
+    _shuffle_left = True
+    _shuffle_right = True
+
+
+class RandomSameValencyPermuter(SentencePermuter):
+    """Random order but same number of nodes on each side as in observed"""
+
+    _shuffle_left = True
+    _shuffle_right = True
+
+    def build_tree(self, tokentree: TokenTree):
         left = []
         right = []
 
-        head_position = tree.token["id"]
+        children = self._ordering_function(tokentree.children)
 
-        for subtree in tree.children:
-            dependent_position = subtree_head_position(subtree)
-            if dependent_position < head_position:
-                left.append(self._random_same_side_construct_tree(subtree))
+        # Find the number of tokens that can be on the left
+        left_branches: int = sum(1 for child in children if child.token["id"] < child.token["head"])
+
+        for i, subtree in enumerate(children):
+            new_branch = self.build_tree(subtree)
+            branch_direction: int = self._directionality_function(subtree, i, left_branches)
+
+            if branch_direction < 0:
+                left.append(new_branch)
+            elif branch_direction > 0:
+                right.append(new_branch)
             else:
-                right.append(self._random_same_side_construct_tree(subtree))
+                raise ValueError("Directionality function must return [-1,1]")
 
-        permutation_tree = Node.make_node(centre=tree.token, left=left, right=right)
+        if self._shuffle_left:
+            random.shuffle(left)
+        if self._shuffle_right:
+            random.shuffle(right)
+        if self._reverse_left:
+            left.reverse()
+        if self._reverse_right:
+            right.reverse()
+
+        permutation_tree = Node.make_node(centre=tokentree.token, left=left, right=right)
         return permutation_tree
 
+    def _directionality_function(self, subtree: TokenTree, i: int = 0, n_left: int = 0) -> Int:
+        if i < n_left:
+            return -1
+        else:
+            return 1
 
-def _is_enhanced_dependency(token: Token) -> bool:
-    return (
-        isinstance(token["id"], tuple)
-        and token["id"][1] == "."
-        and isinstance(token["id"][2], int)
-    )
-
-
-def _is_multiword_token(token: Token) -> bool:
-    return (
-        isinstance(token["id"], tuple)
-        and token["id"][1] == "-"
-        and isinstance(token["id"][2], int)
-    )
+    def _ordering_function(self, tree_children: List[TokenTree]):
+        return random.sample(tree_children, len(tree_children))
 
 
-def subtree_head_position(subtree: TokenTree):
-    return subtree.token["id"]
+class OptimalProjectivePermuter(SentencePermuter):
+    """Permutes according to optimal ordering (inside out by subtree weight"""
+
+    _reverse_left = True
+
+    def build_tree(self, tokentree: TokenTree):
+        left = []
+        right = []
+
+        children = self._ordering_function(tokentree.children)
+
+        for i, subtree in enumerate(children):
+            new_branch = self.build_tree(subtree)
+            branch_direction: int = self._directionality_function(subtree, i)
+
+            if branch_direction < 0:
+                left.append(new_branch)
+            elif branch_direction > 0:
+                right.append(new_branch)
+            else:
+                raise ValueError("Directionality function must return [-1,1]")
+
+        if self._shuffle_left:
+            random.shuffle(left)
+        if self._shuffle_right:
+            random.shuffle(right)
+        if self._reverse_left:
+            left.reverse()
+        if self._reverse_right:
+            right.reverse()
+
+        permutation_tree = Node.make_node(centre=tokentree.token, left=left, right=right)
+        return permutation_tree
+
+    def _directionality_function(self, subtree: TokenTree, i=0) -> Int:
+        if i % 2 == 0:
+            return -1
+        else:
+            return 1
+
+    def _ordering_function(self, tree_children: List[TokenTree]):
+        return sorted(tree_children, key=get_tree_weight)
+
+
+class FixedOrderPermuter(SentencePermuter):
+    _reverse_left = True
+
+    def __init__(self, grammar: Dict):
+        super().__init__()
+        self.grammar = grammar
+
+    def _lookup_deprel(self, subtree: TokenTree):
+        return self.grammar[subtree.token["deprel"]]
+
+    def _ordering_function(self, tree_children: List[TokenTree]):
+        return sorted(
+            tree_children,
+            key=lambda child: abs(
+            self._lookup_deprel(child))
+                      )
+
+    def _directionality_function(self, subtree: TokenTree) -> Int:
+        position_value: float = self._lookup_deprel(subtree)
+        if position_value < 0:
+            return -1
+        else:
+            return 1
