@@ -56,3 +56,13 @@ def fix_token_indices(tokenlist: TokenList):
         new_tokenlist[i]["head"] = index_mapping[token_head]
 
     return new_tokenlist
+
+
+def standardize_deprels(sentence: TokenList):
+    new_sentence = sentence.copy()
+
+    for i, token in enumerate(new_sentence):
+        # Strips anything after the colon in a deprel. If no colon, no change.
+        new_sentence[i]["deprel"] = new_sentence[i]["deprel"].split(":")[0]
+
+    return new_sentence

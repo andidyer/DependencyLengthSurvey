@@ -1,13 +1,14 @@
 from conllu.models import TokenList
 from src.utils.abstractclasses import SentencePreProcessor
-from src.utils.treeutils import fix_token_indices
+from src.utils.treeutils import fix_token_indices, standardize_deprels
 from typing import List, Dict, Tuple
 import logging
 
 
 class SentenceCleaner(SentencePreProcessor):
-    def __init__(self, remove_config: List[Dict]):
+    def __init__(self, remove_config: List[Dict] = None):
         self.remove_config = remove_config if isinstance(remove_config, list) else []
+        self.standardize_deprels = standardize_deprels
 
     def __call__(self, sentence: TokenList):
         return self.process_sentence(sentence)
@@ -16,6 +17,7 @@ class SentenceCleaner(SentencePreProcessor):
         sentence = self.remove_nonstandard_tokens(sentence)
         sentence = self.remove_tokens(sentence)
         sentence = fix_token_indices(sentence)
+        sentence = standardize_deprels(sentence)
         return sentence
 
     def remove_tokens(self, tokenlist: TokenList):
