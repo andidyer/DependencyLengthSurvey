@@ -13,6 +13,7 @@ class TreebankProcessor(ABC):
 
     Uses an inner function, whici
     """
+
     def __init__(self, sentence_processor: SentenceMainProcessor):
         self.sentence_processor = sentence_processor
 

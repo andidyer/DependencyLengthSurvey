@@ -80,11 +80,10 @@ class FileProcessor:
             stem = infile_relpath.stem
             extension = self.fileext
             outfile_parent = Path(outdir, parent)
-            outfile_path = Path(outfile_parent, stem+extension)
+            outfile_path = Path(outfile_parent, stem + extension)
 
             if not outfile_parent.exists():
                 logging.info(f"Making parent path: {outfile_parent}")
                 outfile_parent.mkdir(parents=True)
 
             self.process_file(infile, outfile_path)
-

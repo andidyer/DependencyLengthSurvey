@@ -11,6 +11,7 @@ from src.utils.fileutils import load_ndjson
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -24,13 +25,17 @@ def parse_args():
     )
 
     treebank_source.add_argument(
-        "--directory", type=Path, help="Directory from which to find treebanks by globbing"
+        "--directory",
+        type=Path,
+        help="Directory from which to find treebanks by globbing",
     )
 
-    optional.add_argument("--glob_pattern",
-                          type=str,
-                          default="*",
-                          help="glob pattern for recursively finding files that match the pattern")
+    optional.add_argument(
+        "--glob_pattern",
+        type=str,
+        default="*",
+        help="glob pattern for recursively finding files that match the pattern",
+    )
 
     optional.add_argument(
         "--random_seed", type=int, default=0, help="Random seed for permutation"
@@ -58,14 +63,16 @@ def parse_args():
     )
 
     output.add_argument(
-        "--outdir", type=Path, help="The directory to output the permuted treebank(s) to"
+        "--outdir",
+        type=Path,
+        help="The directory to output the permuted treebank(s) to",
     )
 
     optional.add_argument(
         "--remove_config",
         type=Path,
         default=None,
-        help="ndjson format list of token properties to exclude"
+        help="ndjson format list of token properties to exclude",
     )
 
     optional.add_argument(
@@ -81,7 +88,12 @@ def parse_args():
         help="Exclude sentences with more than a given maximum number of tokens",
     )
 
-    optional.add_argument("--n_times", type=int, default=1, help="Number of times to perform the permutation action on each treebank")
+    optional.add_argument(
+        "--n_times",
+        type=int,
+        default=1,
+        help="Number of times to perform the permutation action on each treebank",
+    )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
 
@@ -103,9 +115,8 @@ def main():
 
     # Make loader with cleaner
     loader = TreebankLoader(
-        remove_config=remove_config,
-        min_len=args.min_len,
-        max_len=args.max_len)
+        remove_config=remove_config, min_len=args.min_len, max_len=args.max_len
+    )
 
     # Make permuter
     permuter = SentencePermuter(args.permutation_mode)
@@ -128,7 +139,9 @@ def main():
         file_processor.process_glob(args.directory, args.glob_pattern, args.outdir)
 
     else:
-        raise argparse.ArgumentError("Incorrect or incompatible use of input and output options.")
+        raise argparse.ArgumentError(
+            "Incorrect or incompatible use of input and output options."
+        )
 
 
 if __name__ == "__main__":

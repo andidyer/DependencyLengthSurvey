@@ -19,4 +19,3 @@ class SentenceMainProcessor(SentenceProcessor):
     @abstractmethod
     def process_sentence(self, sentence: TokenList, **kwargs):
         pass
-

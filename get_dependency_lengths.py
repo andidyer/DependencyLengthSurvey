@@ -27,7 +27,7 @@ def parse_args():
         "--remove_config",
         type=Path,
         default=None,
-        help="ndjson format list of token properties to exclude"
+        help="ndjson format list of token properties to exclude",
     )
 
     optional.add_argument(
@@ -56,9 +56,8 @@ def main():
 
     # Make loader with cleaner
     loader = TreebankLoader(
-        remove_config=remove_config,
-        min_len=args.min_len,
-        max_len=args.max_len)
+        remove_config=remove_config, min_len=args.min_len, max_len=args.max_len
+    )
 
     # Make sentence analyzer
     analyzer = SentenceAnalyzer(count_root=args.count_root)

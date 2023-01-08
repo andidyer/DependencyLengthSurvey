@@ -33,8 +33,7 @@ class FileDumper:
             for sentence in treebank:
                 print(sentence.serialize(), file=fout)
 
+
 def load_ndjson(ndjson_file: Path):
     with open(ndjson_file, encoding="utf-8") as fin:
-        return list(
-            json.loads(line.strip()) for line in fin
-        )
+        return list(json.loads(line.strip()) for line in fin)

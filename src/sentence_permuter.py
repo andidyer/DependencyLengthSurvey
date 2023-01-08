@@ -57,7 +57,9 @@ class SentencePermuter(SentenceMainProcessor):
         if self._reverse_right:
             right.reverse()
 
-        permutation_tree = Node.make_node(centre=tokentree.token, left=left, right=right)
+        permutation_tree = Node.make_node(
+            centre=tokentree.token, left=left, right=right
+        )
         return permutation_tree
 
     def _directionality_function(self, subtree: TokenTree) -> Int:
@@ -86,6 +88,7 @@ class RandomProjectivePermuter(SentencePermuter):
 
 class RandomSameSidePermuter(SentencePermuter):
     """Keeps all nodes on same side but shuffles order"""
+
     _shuffle_left = True
     _shuffle_right = True
 
@@ -103,11 +106,15 @@ class RandomSameValencyPermuter(SentencePermuter):
         children = self._ordering_function(tokentree.children)
 
         # Find the number of tokens that can be on the left
-        left_branches: int = sum(1 for child in children if child.token["id"] < child.token["head"])
+        left_branches: int = sum(
+            1 for child in children if child.token["id"] < child.token["head"]
+        )
 
         for i, subtree in enumerate(children):
             new_branch = self.build_tree(subtree)
-            branch_direction: int = self._directionality_function(subtree, i, left_branches)
+            branch_direction: int = self._directionality_function(
+                subtree, i, left_branches
+            )
 
             if branch_direction < 0:
                 left.append(new_branch)
@@ -125,10 +132,14 @@ class RandomSameValencyPermuter(SentencePermuter):
         if self._reverse_right:
             right.reverse()
 
-        permutation_tree = Node.make_node(centre=tokentree.token, left=left, right=right)
+        permutation_tree = Node.make_node(
+            centre=tokentree.token, left=left, right=right
+        )
         return permutation_tree
 
-    def _directionality_function(self, subtree: TokenTree, i: int = 0, n_left: int = 0) -> Int:
+    def _directionality_function(
+        self, subtree: TokenTree, i: int = 0, n_left: int = 0
+    ) -> Int:
         if i < n_left:
             return -1
         else:
@@ -169,7 +180,9 @@ class OptimalProjectivePermuter(SentencePermuter):
         if self._reverse_right:
             right.reverse()
 
-        permutation_tree = Node.make_node(centre=tokentree.token, left=left, right=right)
+        permutation_tree = Node.make_node(
+            centre=tokentree.token, left=left, right=right
+        )
         return permutation_tree
 
     def _directionality_function(self, subtree: TokenTree, i=0) -> Int:
@@ -193,11 +206,7 @@ class FixedOrderPermuter(SentencePermuter):
         return self.grammar[subtree.token["deprel"]]
 
     def _ordering_function(self, tree_children: List[TokenTree]):
-        return sorted(
-            tree_children,
-            key=lambda child: abs(
-            self._lookup_deprel(child))
-                      )
+        return sorted(tree_children, key=lambda child: abs(self._lookup_deprel(child)))
 
     def _directionality_function(self, subtree: TokenTree) -> Int:
         position_value: float = self._lookup_deprel(subtree)

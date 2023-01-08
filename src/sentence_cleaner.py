@@ -28,7 +28,7 @@ class SentenceCleaner(SentencePreProcessor):
             remove_ids.update(ids)
 
         # While loop to find tokens in subtrees of removed items
-        stack = list(remove_ids)    # Initialise as remove ids found at top level
+        stack = list(remove_ids)  # Initialise as remove ids found at top level
         queue: List[Tuple] = [(token["id"], token["head"]) for token in tokenlist]
 
         while stack:
@@ -38,7 +38,7 @@ class SentenceCleaner(SentencePreProcessor):
                 if head_id in stack:
                     new_ids.append(dep_id)
             remove_ids.update(stack)
-            stack = new_ids     # Terminate when there are no new ids
+            stack = new_ids  # Terminate when there are no new ids
             queue = list((di, hi) for (di, hi) in queue if di not in stack)
 
         tokenlist = filter_preserve_metadata(
