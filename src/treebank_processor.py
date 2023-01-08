@@ -10,8 +10,6 @@ from src.utils.abstractclasses import SentenceMainProcessor
 class TreebankProcessor(ABC):
     """ "
     Class for performing an operation on a treebank.
-
-    Uses an inner function, whici
     """
 
     def __init__(self, sentence_processor: SentenceMainProcessor):

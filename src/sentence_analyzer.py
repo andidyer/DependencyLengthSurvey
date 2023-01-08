@@ -9,8 +9,6 @@ import json
 class SentenceAnalyzer(SentenceMainProcessor):
     """Sentence-level dependency length checker"""
 
-    fileext = ".ndjson"
-
     def __init__(self, count_root: bool = False):
         self.count_root = count_root
 
