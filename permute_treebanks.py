@@ -5,11 +5,10 @@ import logging
 
 from src.file_processor import FileProcessor
 from src.load_treebank import TreebankLoader
-from src.sentence_permuter import SentencePermuter
+from src.sentence_permuter import RandomProjectivePermuter, RandomSameValencyPermuter, RandomSameSidePermuter, FixedOrderPermuter, OptimalProjectivePermuter, SentencePermuter
 from src.treebank_processor import TreebankPermuter
 from src.utils.fileutils import load_ndjson
-
-logging.basicConfig(level=logging.DEBUG)
+from src.utils.processor_factories import treebank_permuter_factory
 
 
 def parse_args():
@@ -44,14 +43,12 @@ def parse_args():
         "--permutation_mode",
         type=str,
         choices=(
-            "random_nonprojective",
             "random_projective",
-            "random_projective_fixed",
             "random_same_valency",
             "random_same_side",
             "optimal_projective",
-            "optimal_projective_weight",
             "original_order",
+            "fixed_order"
         ),
         help="The type of permutation to perform",
     )
@@ -75,6 +72,20 @@ def parse_args():
         help="ndjson format list of token properties to exclude",
     )
 
+    repetitions = optional.add_mutually_exclusive_group()
+
+    repetitions.add_argument(
+        "--n_times",
+        type=int,
+        help="Number of times to perform the permutation action on each treebank",
+    )
+
+    repetitions.add_argument(
+        "--grammars",
+        type=Path,
+        help="Number of times to perform the permutation action on each treebank",
+    )
+
     optional.add_argument(
         "--min_len",
         type=int,
@@ -88,19 +99,11 @@ def parse_args():
         help="Exclude sentences with more than a given maximum number of tokens",
     )
 
-    optional.add_argument(
-        "--n_times",
-        type=int,
-        default=1,
-        help="Number of times to perform the permutation action on each treebank",
-    )
-
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
 
     args = parser.parse_args()
 
     return args
-
 
 def main():
     args = parse_args()
@@ -108,6 +111,7 @@ def main():
     # Set random seed
     random.seed(args.random_seed)
 
+    # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
         remove_config = load_ndjson(args.remove_config)
     else:
@@ -118,14 +122,31 @@ def main():
         remove_config=remove_config, min_len=args.min_len, max_len=args.max_len
     )
 
-    # Make permuter
-    permuter = SentencePermuter(args.permutation_mode)
+    # Make treebank processors
+    treebank_processors = []
 
-    # Make treebank processor
-    treebank_processor = TreebankPermuter(permuter, n_times=args.n_times)
+    if args.n_times:
+
+        for i in range(args.n_times):
+            processor = treebank_permuter_factory(args.permutation_mode)
+            treebank_processors.append(processor)
+
+    elif args.grammars:
+        grammars = load_ndjson(args.grammars)
+        logging.info(f"Instantiating {len(grammars)} processors of permuter type {args.permutation_mode}")
+        if not args.permutation_mode == "fixed_order":
+            logging.warning(f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is definitely a waste of compute.")
+        for grammar in grammars:
+            processor = treebank_permuter_factory(args.permutation_mode, grammar)
+            treebank_processors.append(processor)
+
+    else:
+        logging.info(f"Instantiating single processor of permuter type {args.permutation_mode}")
+        processor = treebank_permuter_factory(args.permutation_mode)
+        treebank_processors.append(processor)
 
     # Make file processor
-    file_processor = FileProcessor(loader, treebank_processor)
+    file_processor = FileProcessor(loader, treebank_processors, ".conllu")
 
     # Handle input and output
     if args.treebank and args.outfile:

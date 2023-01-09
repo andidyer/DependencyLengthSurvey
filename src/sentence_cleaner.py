@@ -8,7 +8,6 @@ import logging
 class SentenceCleaner(SentencePreProcessor):
     def __init__(self, remove_config: List[Dict] = None):
         self.remove_config = remove_config if isinstance(remove_config, list) else []
-        self.standardize_deprels = standardize_deprels
 
     def __call__(self, sentence: TokenList):
         return self.process_sentence(sentence)

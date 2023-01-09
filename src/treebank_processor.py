@@ -26,8 +26,9 @@ class TreebankPermuter(TreebankProcessor):
         self.fileext = ".conllu"
 
     def process_treebank(self, treebank: SentenceList, **kwargs):
+        new_treebank = treebank.copy()
         processed_sentences = []
-        for sentence in treebank:
+        for sentence in new_treebank:
             processed_sentences.append(
                 self.sentence_processor.process_sentence(sentence, **kwargs)
             )
@@ -41,10 +42,12 @@ class TreebankAnalyzer(TreebankProcessor):
         self.fileext = ".ndjson"
 
     def process_treebank(self, treebank: SentenceList, **kwargs):
+        new_treebank = treebank.copy()
         processed_sentences = []
-        for sentence in treebank:
+        for sentence in new_treebank:
+            processed_sentence = self.sentence_processor.process_sentence(sentence, **kwargs)
             processed_sentences.append(
-                self.sentence_processor.process_sentence(sentence, **kwargs)
+                processed_sentence
             )
 
         return processed_sentences

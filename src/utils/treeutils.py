@@ -1,6 +1,9 @@
+import logging
+
 from conllu import Token, TokenList, TokenTree
 from typing import List
 from dataclasses import dataclass, field
+import time
 
 
 @dataclass

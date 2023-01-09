@@ -1,14 +1,13 @@
+import copy
 import json
-import glob
-import os
 import logging
+from pathlib import Path
+from typing import Union, Dict, Iterable, List, AnyStr
 
-from typing import Union, Dict, Iterable
-from pathlib import Path, PurePath
 from conllu import TokenList, SentenceList
 
-from src.treebank_processor import TreebankProcessor
 from src.load_treebank import TreebankLoader
+from src.treebank_processor import TreebankProcessor
 
 
 class FileProcessor:
@@ -19,16 +18,13 @@ class FileProcessor:
     - dumping to file(s)
     """
 
-    def __init__(self, loader: TreebankLoader, treebank_processor: TreebankProcessor):
+    def __init__(self, loader: TreebankLoader, treebank_processors: List[TreebankProcessor], fileext: AnyStr):
         self.loader = loader
-        self.treebank_processor = treebank_processor
-        self.fileext = self.treebank_processor.fileext
+        self.treebank_processors = treebank_processors
+        self.fileext = fileext
 
     def load_conllu_file(self, infile: Path):
         return self.loader.load_treebank(infile)
-
-    def process_treebank(self, treebank: SentenceList):
-        return self.treebank_processor.process_treebank(treebank)
 
     @staticmethod
     def serialize_data(data_item: Union[TokenList, Dict]):
@@ -60,7 +56,12 @@ class FileProcessor:
     def process_file(self, infile: Path, outfile: Path):
         """Main function for processing a single file"""
         input_treebank = self.load_conllu_file(infile)
-        processed_treebank = self.process_treebank(input_treebank)
+        processed_treebank = []
+        for i, processor in enumerate(self.treebank_processors):
+            input_treebank_copy = copy.deepcopy(input_treebank)
+            processed = processor.process_treebank(input_treebank_copy)
+            processed_treebank.extend(processed)
+
         self.dump_to_file(processed_treebank, outfile)
 
     def process_glob(self, indir: Path, glob_pattern: str, outdir: Path):
