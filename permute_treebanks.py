@@ -72,6 +72,14 @@ def parse_args():
         help="ndjson format list of token properties to exclude",
     )
 
+    optional.add_argument(
+        "--fields_to_remove",
+        type=str,
+        nargs="*",
+        choices=["form", "lemma", "upos", "xpos", "feats", "deps", "misc"],
+        help="Masks any fields in a conllu that are not necessary; can save some space"
+    )
+
     repetitions = optional.add_mutually_exclusive_group()
 
     repetitions.add_argument(
@@ -119,7 +127,7 @@ def main():
 
     # Make loader with cleaner
     loader = TreebankLoader(
-        remove_config=remove_config, min_len=args.min_len, max_len=args.max_len
+        remove_config=remove_config, fields_to_remove=args.fields_to_remove, min_len=args.min_len, max_len=args.max_len
     )
 
     # Make treebank processors

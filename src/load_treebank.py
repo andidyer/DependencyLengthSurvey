@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, AnyStr
 import conllu
 from conllu.models import Token, TokenList, SentenceList
 
@@ -10,9 +10,9 @@ class TreebankLoader:
     """ ""Loads a Treebank"""
 
     def __init__(
-        self, remove_config: List[Dict] = None, min_len: int = 1, max_len: int = 999
+        self, remove_config: List[Dict] = None, fields_to_remove: List[AnyStr] = None, min_len: int = 1, max_len: int = 999
     ):
-        self.cleaner = SentenceCleaner(remove_config)
+        self.cleaner = SentenceCleaner(remove_config, fields_to_remove)
         self.min_len = min_len
         self.max_len = max_len
 

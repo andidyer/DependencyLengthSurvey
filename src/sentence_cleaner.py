@@ -1,13 +1,14 @@
 from conllu.models import TokenList
 from src.utils.abstractclasses import SentencePreProcessor
 from src.utils.treeutils import fix_token_indices, standardize_deprels
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, AnyStr
 import logging
 
 
 class SentenceCleaner(SentencePreProcessor):
-    def __init__(self, remove_config: List[Dict] = None):
+    def __init__(self, remove_config: List[Dict] = None, fields_to_empty: List[AnyStr] = None):
         self.remove_config = remove_config if isinstance(remove_config, list) else []
+        self.fields_to_empty = fields_to_empty if isinstance(fields_to_empty, list) else []
 
     def __call__(self, sentence: TokenList):
         return self.process_sentence(sentence)
@@ -17,6 +18,7 @@ class SentenceCleaner(SentencePreProcessor):
         sentence = self.remove_tokens(sentence)
         sentence = fix_token_indices(sentence)
         sentence = standardize_deprels(sentence)
+        sentence = self.empty_fields(sentence)
         return sentence
 
     def remove_tokens(self, tokenlist: TokenList):
@@ -47,6 +49,16 @@ class SentenceCleaner(SentencePreProcessor):
         )
 
         return tokenlist
+
+    def empty_fields(self, tokenlist: TokenList):
+        new_tokenlist = tokenlist.copy()
+        for i, token in enumerate(new_tokenlist):
+            for field in self.fields_to_empty:
+                if field not in new_tokenlist[i]:
+                    raise KeyError(f"Token does not contain field {field}; this cannot be emptied")
+                else:
+                    new_tokenlist[i][field] = "_"
+        return new_tokenlist
 
     @staticmethod
     def remove_nonstandard_tokens(tokenlist: TokenList):
