@@ -46,7 +46,7 @@ required arguments:
 For example:
 
 ```shell
-user$ python get_dependency_lengths.py \
+user$ python analyze_treebanks.py \
 --treebank my_treebank.conllu \
 --outfile my_output_file.ndjson
 ```
@@ -55,7 +55,7 @@ Alternatively, if your data is in several treebanks, you can
 read from all files in a specified directory.
 
 ```shell
-user$ python get_dependency_lengths.py \
+user$ python analyze_treebanks.py \
 --directory my_treebank_directory/ \
 --outfile my_output_file.ndjson
 ```
@@ -73,7 +73,7 @@ also be counted.
 This can be used as follows:
 
 ```shell
-user$ python get_dependency_lengths.py \
+user$ python analyze_treebanks.py \
 --treebank my_treebank.conllu \
 --outfile my_output_file.ndjson \
 --count_root
@@ -83,7 +83,7 @@ You can use the options `--min_len` and `--max_len` to exclude sentences that ha
 fewer than a minimum or more than a maximum number of tokens. For example:
 
 ```shell
-user$ python get_dependency_lengths.py \
+user$ python analyze_treebanks.py \
 --treebank my_treebank.conllu \
 --outfile my_output_file.ndjson \
 --min_len 5 \

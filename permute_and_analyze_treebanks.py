@@ -3,12 +3,10 @@ import random
 from pathlib import Path
 import logging
 
-from src.file_processor import FileProcessor, FilePermuter
+from src.file_processor import FilePermuterAnalyzer
 from src.load_treebank import TreebankLoader
-from src.sentence_permuter import RandomProjectivePermuter, RandomSameValencyPermuter, RandomSameSidePermuter, FixedOrderPermuter, OptimalProjectivePermuter, SentencePermuter
-from src.treebank_processor import TreebankPermuter
 from src.utils.fileutils import load_ndjson
-from src.utils.processor_factories import treebank_permuter_factory
+from src.utils.processor_factories import treebank_permuter_factory, treebank_analyzer_factory
 
 
 def parse_args():
@@ -106,6 +104,11 @@ def parse_args():
         default=999,
         help="Exclude sentences with more than a given maximum number of tokens",
     )
+    optional.add_argument(
+        "--count_root",
+        action="store_true",
+        help="Include the root node in the sentence analysis",
+    )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
 
@@ -131,30 +134,33 @@ def main():
     )
 
     # Make treebank processors
-    treebank_processors = []
+    treebank_permuters = []
 
     if args.n_times:
 
         for i in range(args.n_times):
-            processor = treebank_permuter_factory(args.permutation_mode)
-            treebank_processors.append(processor)
+            permuter = treebank_permuter_factory(args.permutation_mode)
+            treebank_permuters.append(permuter)
 
     elif args.grammars:
         grammars = load_ndjson(args.grammars)
         logging.info(f"Instantiating {len(grammars)} processors of permuter type {args.permutation_mode}")
         if not args.permutation_mode == "fixed_order":
-            logging.warning(f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is definitely a waste of compute.")
+            logging.warning(f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is almost certainly a waste of compute and disk space.")
         for grammar in grammars:
-            processor = treebank_permuter_factory(args.permutation_mode, grammar)
-            treebank_processors.append(processor)
+            permuter = treebank_permuter_factory(args.permutation_mode, grammar)
+            treebank_permuters.append(permuter)
 
     else:
         logging.info(f"Instantiating single processor of permuter type {args.permutation_mode}")
-        processor = treebank_permuter_factory(args.permutation_mode)
-        treebank_processors.append(processor)
+        permuter = treebank_permuter_factory(args.permutation_mode)
+        treebank_permuters.append(permuter)
+
+    # Make treebank analyzer
+    treebank_analyzer = treebank_analyzer_factory(args.count_root)
 
     # Make file processor
-    file_processor = FilePermuter(loader, treebank_processors)
+    file_processor = FilePermuterAnalyzer(loader, treebank_permuters, treebank_analyzer)
 
     # Handle input and output
     if args.treebank and args.outfile:

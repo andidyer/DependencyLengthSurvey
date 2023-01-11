@@ -3,7 +3,7 @@ import random
 from pathlib import Path
 import logging
 
-from src.file_processor import FileProcessor
+from src.file_processor import FileProcessor, FileAnalyzer
 from src.load_treebank import TreebankLoader
 from src.utils.fileutils import load_ndjson
 from src.utils.processor_factories import treebank_analyzer_factory
@@ -107,14 +107,12 @@ def main():
         remove_config=remove_config, fields_to_remove=args.fields_to_remove, min_len=args.min_len, max_len=args.max_len
     )
 
-    # Make treebank processors
-    treebank_processors = []
+    # Make treebank analyzer
 
-    processor = treebank_analyzer_factory(args.count_root)
-    treebank_processors.append(processor)
+    analyzer = treebank_analyzer_factory(args.count_root)
 
     # Make file processor
-    file_processor = FileProcessor(loader, treebank_processors, ".ndjson")
+    file_processor = FileAnalyzer(loader, analyzer)
 
     # Handle input and output
     if args.treebank and args.outfile:
