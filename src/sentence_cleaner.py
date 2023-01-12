@@ -6,15 +6,18 @@ import logging
 
 
 class SentenceCleaner(SentencePreProcessor):
-    def __init__(self, remove_config: List[Dict] = None, fields_to_empty: List[AnyStr] = None):
+    def __init__(self, remove_config: List[Dict] = None, fields_to_empty: List[AnyStr] = None, mask_words: bool = False):
         self.remove_config = remove_config if isinstance(remove_config, list) else []
         self.fields_to_empty = fields_to_empty if isinstance(fields_to_empty, list) else []
+        self.mask_words = mask_words
 
     def __call__(self, sentence: TokenList):
         return self.process_sentence(sentence)
 
     def process_sentence(self, sentence: TokenList, **kwargs):
         sentence = self.remove_nonstandard_tokens(sentence)
+        if self.mask_words:
+            sentence = self.mask_token_lexicon(sentence)
         sentence = self.remove_tokens(sentence)
         sentence = fix_token_indices(sentence)
         sentence = standardize_deprels(sentence)
@@ -68,6 +71,19 @@ class SentenceCleaner(SentencePreProcessor):
         """
         return filter_preserve_metadata(tokenlist, id=lambda x: isinstance(x, int))
 
+    def mask_token_lexicon(self, tokenlist: TokenList):
+        """Removes lexical information of the sentence. Replaces metadata text with ***MASKED***, and
+        token form and lemma with [sent_id]+[token_id], e.g. 4-1, 4-2, ..., 4-n"""
+        new_tokenlist = tokenlist.copy()
+        sent_id = new_tokenlist.metadata["sent_id"]
+        new_tokenlist.metadata["text"] = "*MASKED*"
+        for i, token in enumerate(new_tokenlist):
+            token_id = token["id"]
+            replace_value = f"f{sent_id}-{token_id}"
+            new_tokenlist[i]["form"] = replace_value
+            new_tokenlist[i]["lemma"] = replace_value
+
+        return new_tokenlist
 
 def filter_preserve_metadata(tokenlist: TokenList, **kwargs):
     sentence = tokenlist.filter(**kwargs)

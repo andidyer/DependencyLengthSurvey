@@ -106,6 +106,11 @@ def parse_args():
         default=999,
         help="Exclude sentences with more than a given maximum number of tokens",
     )
+    optional.add_argument(
+        "--mask_words",
+        action="store_true",
+        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index."
+    )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
 
@@ -127,7 +132,11 @@ def main():
 
     # Make loader with cleaner
     loader = TreebankLoader(
-        remove_config=remove_config, fields_to_remove=args.fields_to_remove, min_len=args.min_len, max_len=args.max_len
+        remove_config=remove_config,
+        fields_to_remove=args.fields_to_remove,
+        min_len=args.min_len,
+        max_len=args.max_len,
+        mask_words=args.mask_words,
     )
 
     # Make treebank processors
