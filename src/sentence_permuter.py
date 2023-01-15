@@ -207,7 +207,7 @@ class FixedOrderPermuter(SentencePermuter):
 
     def __init__(self, grammar: Dict):
         super().__init__()
-        self.grammar = grammar
+        self.grammar = defaultdict(float, grammar)
 
     def _lookup_deprel(self, subtree: TokenTree):
         return self.grammar[subtree.token["deprel"]]
