@@ -27,13 +27,8 @@ class TreebankPermuter(TreebankProcessor):
 
     def process_treebank(self, treebank: SentenceList, **kwargs):
         new_treebank = treebank.copy()
-        processed_sentences = []
         for sentence in new_treebank:
-            processed_sentences.append(
-                self.sentence_processor.process_sentence(sentence, **kwargs)
-            )
-
-        return processed_sentences
+            yield self.sentence_processor.process_sentence(sentence, **kwargs)
 
 
 class TreebankAnalyzer(TreebankProcessor):
@@ -43,11 +38,5 @@ class TreebankAnalyzer(TreebankProcessor):
 
     def process_treebank(self, treebank: SentenceList, **kwargs):
         new_treebank = treebank.copy()
-        processed_sentences = []
         for sentence in new_treebank:
-            processed_sentence = self.sentence_processor.process_sentence(sentence, **kwargs)
-            processed_sentences.append(
-                processed_sentence
-            )
-
-        return processed_sentences
+            yield self.sentence_processor.process_sentence(sentence, **kwargs)

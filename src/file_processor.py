@@ -9,6 +9,7 @@ from conllu import TokenList, SentenceList
 
 from src.load_treebank import TreebankLoader
 from src.treebank_processor import TreebankProcessor, TreebankAnalyzer, TreebankPermuter
+from src.sentence_analyzer import SentenceAnalyzer
 
 
 class FileProcessor(ABC):
@@ -79,16 +80,17 @@ class FilePermuter(FileProcessor):
         super().__init__(loader)
         self.treebank_permuters = treebank_permuters
 
+    def ingest_conllu_file(self, infile: Path):
+        input_treebank = self.load_conllu_file(infile)
+        for i, permuter in enumerate(self.treebank_permuters):
+            input_treebank_copy = copy.deepcopy(input_treebank) # Avoid changing values of preceding treebanks
+            processed = permuter.process_treebank(input_treebank_copy)
+            yield from processed
+
     def process_file(self, infile: Path, outfile: Path):
         """Main function for processing a single file"""
-        input_treebank = self.load_conllu_file(infile)
-        processed_treebank = []
-        for i, permuter in enumerate(self.treebank_permuters):
-            input_treebank_copy = copy.deepcopy(input_treebank)
-            processed = permuter.process_treebank(input_treebank_copy)
-            processed_treebank.extend(processed)
-
-        self.dump_to_file(processed_treebank, outfile)
+        ingested_data = self.ingest_conllu_file(infile)
+        self.dump_to_file(ingested_data, outfile)
 
     def serialize_data(self, data_item: TokenList):
         return data_item.serialize()
@@ -101,16 +103,17 @@ class FileAnalyzer(FileProcessor):
         super().__init__(loader)
         self.treebank_analyzer = treebank_analyzer
 
+    def ingest_conllu_file(self, infile: Path):
+        input_treebank = self.load_conllu_file(infile)
+
+        input_treebank_copy = copy.deepcopy(input_treebank) # Avoid changing values of preceding treebanks
+        processed = self.treebank_analyzer.process_treebank(input_treebank_copy)
+        yield from processed
+
     def process_file(self, infile: Path, outfile: Path):
         """Main function for processing a single file"""
-        input_treebank = self.load_conllu_file(infile)
-        processed_treebank = []
-
-        input_treebank_copy = copy.deepcopy(input_treebank)
-        processed = self.treebank_analyzer.process_treebank(input_treebank_copy)
-        processed_treebank.extend(processed)
-
-        self.dump_to_file(processed_treebank, outfile)
+        ingested_data = self.ingest_conllu_file(infile)
+        self.dump_to_file(ingested_data, outfile)
 
     def serialize_data(self, data_item: Dict):
         return json.dumps(data_item)
@@ -124,23 +127,25 @@ class FilePermuterAnalyzer(FileProcessor):
     """
     fileext = ".ndjson"
 
-    def __init__(self, loader: TreebankLoader, treebank_permuters: List[TreebankPermuter], treebank_analyzer: TreebankAnalyzer):
+    def __init__(self, loader: TreebankLoader, treebank_permuters: List[TreebankPermuter], sentence_analyzer: SentenceAnalyzer):
         super().__init__(loader)
         self.treebank_permuters = treebank_permuters
-        self.treebank_analyzer = treebank_analyzer
+        self.sentence_analyzer = sentence_analyzer
+
+    def ingest_conllu_file(self, infile: Path):
+        input_treebank = self.load_conllu_file(infile)
+        for i, permuter in enumerate(self.treebank_permuters):
+            input_treebank_copy = copy.deepcopy(input_treebank) # Avoid changing values of preceding treebanks
+            permuted_sentence_stream = permuter.process_treebank(input_treebank_copy)
+
+            for permuted_sentence in permuted_sentence_stream:
+                analysis = self.sentence_analyzer.process_sentence(permuted_sentence)
+                yield analysis
 
     def process_file(self, infile: Path, outfile: Path):
         """Main function for processing a single file"""
         input_treebank = self.load_conllu_file(infile)
-        treebank_analysis_data: List[Dict] = []
-
-        # For all provided permuters, permute the treebank and then analyze it with the analyzer
-        for i, permuter in enumerate(self.treebank_permuters):
-            input_treebank_copy = copy.deepcopy(input_treebank)
-            permuted = permuter.process_treebank(input_treebank_copy)
-            analysis: List[Dict] = self.treebank_analyzer.process_treebank(permuted)
-            treebank_analysis_data.extend(analysis)
-
+        treebank_analysis_data = self.ingest_conllu_file(infile)
         self.dump_to_file(treebank_analysis_data, outfile)
 
     def serialize_data(self, data_item: Dict):

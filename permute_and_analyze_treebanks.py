@@ -6,7 +6,7 @@ import logging
 from src.file_processor import FilePermuterAnalyzer
 from src.load_treebank import TreebankLoader
 from src.utils.fileutils import load_ndjson
-from src.utils.processor_factories import treebank_permuter_factory, treebank_analyzer_factory
+from src.utils.processor_factories import treebank_permuter_factory, sentence_analyzer_factory
 
 
 def parse_args():
@@ -121,7 +121,10 @@ def main():
 
     # Set logging level to info if verbose
     if args.verbose:
-        logging.basicConfig(level=logging.INFO)
+        level=logging.INFO
+    else:
+        level = logging.WARNING
+    logging.basicConfig(format= "%(asctime)s %(message)s", level=logging.INFO)
 
     # Set random seed
     random.seed(args.random_seed)
@@ -164,11 +167,12 @@ def main():
         permuter = treebank_permuter_factory(args.permutation_mode)
         treebank_permuters.append(permuter)
 
-    # Make treebank analyzer
-    treebank_analyzer = treebank_analyzer_factory(args.count_root)
+    # Make sentence analyzer - this time we only need a sentence analyzer, not a treebank analyzer
+    logging.info(f"Instantiating sentence analyzer")
+    sentence_analyzer = sentence_analyzer_factory(args.count_root)
 
     # Make file processor
-    file_processor = FilePermuterAnalyzer(loader, treebank_permuters, treebank_analyzer)
+    file_processor = FilePermuterAnalyzer(loader, treebank_permuters, sentence_analyzer)
 
     # Handle input and output
     if args.treebank and args.outfile:

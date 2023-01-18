@@ -169,7 +169,7 @@ class OptimalProjectivePermuter(SentencePermuter):
 
         for i, subtree in enumerate(children):
             new_branch = self.build_tree(subtree)
-            branch_direction: SupportsInt = self._directionality_function(subtree, i)
+            branch_direction: int = self._directionality_function(subtree, i)
 
             if branch_direction < 0:
                 left.append(new_branch)
@@ -192,7 +192,7 @@ class OptimalProjectivePermuter(SentencePermuter):
         )
         return permutation_tree
 
-    def _directionality_function(self, subtree: TokenTree, i=0) -> SupportsInt:
+    def _directionality_function(self, subtree: TokenTree, i=0) -> int:
         if i % 2 == 0:
             return -1
         else:
