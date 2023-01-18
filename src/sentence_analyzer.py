@@ -1,4 +1,4 @@
-from typing import List, Generator
+from typing import List, Generator, SupportsInt
 
 from conllu.models import Token, TokenList, SentenceList
 from src.utils.abstractclasses import SentenceMainProcessor
@@ -21,14 +21,20 @@ class SentenceAnalyzer(SentenceMainProcessor):
             - sentence_dependency_lengths
         """
         sentence_data: dict = {
-            "sentence_id": sentence.metadata["sent_id"],
-            "sentence_length": get_sentence_length(sentence),
-            "sentence_sum_dependency_length": get_sentence_sum_dependency_length(
+            "id": sentence.metadata["sent_id"],
+            "sentlen": get_sentence_length(sentence),
+            "sumdeplen": get_sentence_sum_dependency_length(
                 sentence
             ),
-            "sentence_dependency_lengths": get_sentence_dependency_lengths(
+            "deplens": get_sentence_dependency_lengths(
                 sentence, count_root=self.count_root
             ),
+            "icm": get_sentence_sum_intervener_complexity(
+                sentence, count_root=self.count_root
+            ),
+            "interveners": get_sentence_intervener_complexities(
+                sentence, count_root=self.count_root
+            )
         }
 
         return sentence_data
@@ -50,6 +56,31 @@ def get_sentence_length(sentence: TokenList) -> int:
 
     return n_tokens
 
+
+def get_sentence_sum_intervener_complexity(sentence: TokenList, count_root=False) -> SupportsInt:
+    complexities = get_sentence_intervener_complexities(sentence, count_root=count_root)
+    return sum(complexities)
+
+
+def get_sentence_intervener_complexities(sentence: TokenList, count_root=False) -> List[SupportsInt]:
+    """Get a list of intervener complexities for each token in the sentnece"""
+    complexities = []
+    heads_map = TokenList.head_to_token(sentence)
+    for token in sentence:
+        dep_id = token["id"]
+        head_id = token["head"]
+
+        if dep_id < head_id:
+            lower = dep_id + 1  # Must not include self
+            upper = head_id + 1
+        else:
+            lower = head_id
+            upper = dep_id
+
+        intervening_heads = sum(1 for head_id in heads_map if head_id in range(lower,upper))
+        complexities.append(intervening_heads)
+
+    return complexities
 
 def get_sentence_dependency_lengths(sentence: TokenList, count_root=False) -> List[int]:
     """Get a list of dependency lengths in the sentence"""
