@@ -67,6 +67,8 @@ def get_sentence_intervener_complexities(sentence: TokenList, count_root=False) 
     complexities = []
     heads_map = TokenList.head_to_token(sentence)
     for token in sentence:
+        if not count_root and token["head"] == 0:
+            continue
         dep_id = token["id"]
         head_id = token["head"]
 
