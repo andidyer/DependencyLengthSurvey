@@ -124,6 +124,13 @@ def main():
     # Set random seed
     random.seed(args.random_seed)
 
+    # Set logging level to info if verbose
+    if args.verbose:
+        level=logging.INFO
+    else:
+        level = logging.WARNING
+    logging.basicConfig(format= "%(asctime)s %(levelname)s %(message)s", level=level)
+
     # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
         remove_config = load_ndjson(args.remove_config)

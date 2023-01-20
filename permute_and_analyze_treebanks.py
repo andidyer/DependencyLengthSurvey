@@ -124,7 +124,7 @@ def main():
         level=logging.INFO
     else:
         level = logging.WARNING
-    logging.basicConfig(format= "%(asctime)s %(message)s", level=logging.INFO)
+    logging.basicConfig(format= "%(asctime)s %(levelname)s %(message)s", level=level)
 
     # Set random seed
     random.seed(args.random_seed)
@@ -156,6 +156,7 @@ def main():
     elif args.grammars:
         grammars = load_ndjson(args.grammars)
         logging.info(f"Instantiating {len(grammars)} processors of permuter type {args.permutation_mode}")
+        logging.info(f"Using grammars contained in {args.grammars}")
         if not args.permutation_mode == "fixed_order":
             logging.warning(f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is almost certainly a waste of compute and disk space.")
         for grammar in grammars:
