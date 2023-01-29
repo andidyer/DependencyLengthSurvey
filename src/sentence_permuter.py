@@ -1,14 +1,11 @@
 import random
-from typing import Callable, List, Dict, SupportsInt
 from collections import defaultdict
-from itertools import cycle
-from abc import ABC, abstractmethod
-import logging
+from typing import List, Dict, SupportsInt
 
-from conllu.models import Token, TokenList, TokenTree, SentenceList
+from conllu.models import TokenList, TokenTree
 
-from src.utils.treeutils import fix_token_indices, get_tree_weight, Node
 from src.utils.abstractclasses import SentenceMainProcessor
+from src.utils.treeutils import fix_token_indices, get_tree_weight, Node
 
 
 class SentencePermuter(SentenceMainProcessor):

@@ -1,7 +1,7 @@
 import argparse
+import logging
 import random
 from pathlib import Path
-import logging
 
 from src.file_processor import FilePermuterAnalyzer
 from src.load_treebank import TreebankLoader

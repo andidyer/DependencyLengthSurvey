@@ -1,9 +1,8 @@
 from typing import List, Generator, SupportsInt
 
-from conllu.models import Token, TokenList, SentenceList
-from src.utils.abstractclasses import SentenceMainProcessor
+from conllu.models import Token, TokenList
 
-import json
+from src.utils.abstractclasses import SentenceMainProcessor
 
 
 class SentenceAnalyzer(SentenceMainProcessor):

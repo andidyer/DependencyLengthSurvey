@@ -1,8 +1,9 @@
-import json
 import csv
+import json
 from pathlib import Path
 from typing import Iterable, Union
-from conllu import Token, TokenList, TokenTree, SentenceList
+
+from conllu import TokenList, SentenceList
 
 
 class FileDumper:

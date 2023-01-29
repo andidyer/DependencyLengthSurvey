@@ -1,16 +1,15 @@
 import copy
 import json
 import logging
-from pathlib import Path
-from typing import Union, Dict, Iterable, List, AnyStr, Any
 from abc import ABC, abstractmethod
-import zipfile
+from pathlib import Path
+from typing import Dict, Iterable, List, Any
 
-from conllu import TokenList, SentenceList
+from conllu import TokenList
 
 from src.load_treebank import TreebankLoader
-from src.treebank_processor import TreebankProcessor, TreebankAnalyzer, TreebankPermuter
 from src.sentence_analyzer import SentenceAnalyzer
+from src.treebank_processor import TreebankAnalyzer, TreebankPermuter
 
 
 class FileProcessor(ABC):
