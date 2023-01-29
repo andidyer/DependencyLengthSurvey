@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Union, Dict, Iterable, List, AnyStr, Any
 from abc import ABC, abstractmethod
+import zipfile
 
 from conllu import TokenList, SentenceList
 
@@ -144,7 +145,6 @@ class FilePermuterAnalyzer(FileProcessor):
 
     def process_file(self, infile: Path, outfile: Path):
         """Main function for processing a single file"""
-        input_treebank = self.load_conllu_file(infile)
         treebank_analysis_data = self.ingest_conllu_file(infile)
         self.dump_to_file(treebank_analysis_data, outfile)
 
