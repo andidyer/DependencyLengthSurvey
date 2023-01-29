@@ -6,7 +6,10 @@ import logging
 from src.file_processor import FilePermuterAnalyzer
 from src.load_treebank import TreebankLoader
 from src.utils.fileutils import load_ndjson
-from src.utils.processor_factories import treebank_permuter_factory, sentence_analyzer_factory
+from src.utils.processor_factories import (
+    treebank_permuter_factory,
+    sentence_analyzer_factory,
+)
 
 
 def parse_args():
@@ -46,7 +49,7 @@ def parse_args():
             "random_same_side",
             "optimal_projective",
             "original_order",
-            "fixed_order"
+            "fixed_order",
         ),
         help="The type of permutation to perform",
     )
@@ -75,7 +78,7 @@ def parse_args():
         type=str,
         nargs="*",
         choices=["form", "lemma", "upos", "xpos", "feats", "deps", "misc"],
-        help="Masks any fields in a conllu that are not necessary; can save some space"
+        help="Masks any fields in a conllu that are not necessary; can save some space",
     )
 
     repetitions = optional.add_mutually_exclusive_group()
@@ -116,15 +119,16 @@ def parse_args():
 
     return args
 
+
 def main():
     args = parse_args()
 
     # Set logging level to info if verbose
     if args.verbose:
-        level=logging.INFO
+        level = logging.INFO
     else:
         level = logging.WARNING
-    logging.basicConfig(format= "%(asctime)s %(levelname)s %(message)s", level=level)
+    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=level)
 
     # Set random seed
     random.seed(args.random_seed)
@@ -137,17 +141,27 @@ def main():
 
     # Make loader with cleaner
     loader = TreebankLoader(
-        remove_config=remove_config, fields_to_remove=args.fields_to_remove, min_len=args.min_len, max_len=args.max_len
+        remove_config=remove_config,
+        fields_to_remove=args.fields_to_remove,
+        min_len=args.min_len,
+        max_len=args.max_len,
     )
 
     # Make treebank processors
     treebank_permuters = []
 
     if args.n_times:
-        logging.info(f"Instantiating {args.n_times} processors of permuter type {args.permutation_mode}")
-        if not args.permutation_mode in ("random_projective", "random_same_valency", "random_same_side",):
-            logging.warning(f"{args.permutation_mode} does not produce randomized orders, so running with {args.n_times} repetitions is wasteful")
-
+        logging.info(
+            f"Instantiating {args.n_times} processors of permuter type {args.permutation_mode}"
+        )
+        if not args.permutation_mode in (
+            "random_projective",
+            "random_same_valency",
+            "random_same_side",
+        ):
+            logging.warning(
+                f"{args.permutation_mode} does not produce randomized orders, so running with {args.n_times} repetitions is wasteful"
+            )
 
         for i in range(args.n_times):
             permuter = treebank_permuter_factory(args.permutation_mode)
@@ -155,16 +169,22 @@ def main():
 
     elif args.grammars:
         grammars = load_ndjson(args.grammars)
-        logging.info(f"Instantiating {len(grammars)} processors of permuter type {args.permutation_mode}")
+        logging.info(
+            f"Instantiating {len(grammars)} processors of permuter type {args.permutation_mode}"
+        )
         logging.info(f"Using grammars contained in {args.grammars}")
         if not args.permutation_mode == "fixed_order":
-            logging.warning(f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is almost certainly a waste of compute and disk space.")
+            logging.warning(
+                f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is almost certainly a waste of compute and disk space."
+            )
         for grammar in grammars:
             permuter = treebank_permuter_factory(args.permutation_mode, grammar)
             treebank_permuters.append(permuter)
 
     else:
-        logging.info(f"Instantiating single processor of permuter type {args.permutation_mode}")
+        logging.info(
+            f"Instantiating single processor of permuter type {args.permutation_mode}"
+        )
         permuter = treebank_permuter_factory(args.permutation_mode)
         treebank_permuters.append(permuter)
 

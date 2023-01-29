@@ -6,9 +6,16 @@ import logging
 
 
 class SentenceCleaner(SentencePreProcessor):
-    def __init__(self, remove_config: List[Dict] = None, fields_to_empty: List[AnyStr] = None, mask_words: bool = False):
+    def __init__(
+        self,
+        remove_config: List[Dict] = None,
+        fields_to_empty: List[AnyStr] = None,
+        mask_words: bool = False,
+    ):
         self.remove_config = remove_config if isinstance(remove_config, list) else []
-        self.fields_to_empty = fields_to_empty if isinstance(fields_to_empty, list) else []
+        self.fields_to_empty = (
+            fields_to_empty if isinstance(fields_to_empty, list) else []
+        )
         self.mask_words = mask_words
 
     def __call__(self, sentence: TokenList):
@@ -58,7 +65,9 @@ class SentenceCleaner(SentencePreProcessor):
         for i, token in enumerate(new_tokenlist):
             for field in self.fields_to_empty:
                 if field not in new_tokenlist[i]:
-                    raise KeyError(f"Token does not contain field {field}; this cannot be emptied")
+                    raise KeyError(
+                        f"Token does not contain field {field}; this cannot be emptied"
+                    )
                 else:
                     new_tokenlist[i][field] = "_"
         return new_tokenlist
@@ -84,6 +93,7 @@ class SentenceCleaner(SentencePreProcessor):
             new_tokenlist[i]["lemma"] = replace_value
 
         return new_tokenlist
+
 
 def filter_preserve_metadata(tokenlist: TokenList, **kwargs):
     sentence = tokenlist.filter(**kwargs)

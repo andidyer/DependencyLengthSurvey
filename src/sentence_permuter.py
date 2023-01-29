@@ -33,9 +33,7 @@ class SentencePermuter(SentenceMainProcessor):
         return new_sentence
 
     def _make_new_tokenlist_from_tree(self, nodetree: Node, metadata: dict):
-        new_sentence = TokenList(
-            list(nodetree.traverse()), metadata=metadata
-        )
+        new_sentence = TokenList(list(nodetree.traverse()), metadata=metadata)
         return new_sentence
 
     def build_tree(self, tokentree: TokenTree):
@@ -222,6 +220,7 @@ class FixedOrderPermuter(SentencePermuter):
         else:
             return 1
 
+
 def sentence_permuter_factory(mode: str, *grammar):
     # Grammar is unpacked here, but at most these will support one.
     if mode == "random_projective":
@@ -237,10 +236,12 @@ def sentence_permuter_factory(mode: str, *grammar):
     elif mode == "fixed_order":
         return FixedOrderPermuter(*grammar)
     else:
-        raise ValueError(f"""Invalid permutation mode {mode} Choose from:
+        raise ValueError(
+            f"""Invalid permutation mode {mode} Choose from:
                                 - random_projective
                                 - random_same_valency
                                 - random_same_side
                                 - optimal_projective
                                 - original_order
-                                - fixed_order""")
+                                - fixed_order"""
+        )

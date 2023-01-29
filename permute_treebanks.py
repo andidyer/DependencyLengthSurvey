@@ -5,7 +5,14 @@ import logging
 
 from src.file_processor import FileProcessor, FilePermuter
 from src.load_treebank import TreebankLoader
-from src.sentence_permuter import RandomProjectivePermuter, RandomSameValencyPermuter, RandomSameSidePermuter, FixedOrderPermuter, OptimalProjectivePermuter, SentencePermuter
+from src.sentence_permuter import (
+    RandomProjectivePermuter,
+    RandomSameValencyPermuter,
+    RandomSameSidePermuter,
+    FixedOrderPermuter,
+    OptimalProjectivePermuter,
+    SentencePermuter,
+)
 from src.treebank_processor import TreebankPermuter
 from src.utils.fileutils import load_ndjson
 from src.utils.processor_factories import treebank_permuter_factory
@@ -48,7 +55,7 @@ def parse_args():
             "random_same_side",
             "optimal_projective",
             "original_order",
-            "fixed_order"
+            "fixed_order",
         ),
         help="The type of permutation to perform",
     )
@@ -77,7 +84,7 @@ def parse_args():
         type=str,
         nargs="*",
         choices=["form", "lemma", "upos", "xpos", "feats", "deps", "misc"],
-        help="Masks any fields in a conllu that are not necessary; can save some space"
+        help="Masks any fields in a conllu that are not necessary; can save some space",
     )
 
     repetitions = optional.add_mutually_exclusive_group()
@@ -109,7 +116,7 @@ def parse_args():
     optional.add_argument(
         "--mask_words",
         action="store_true",
-        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index."
+        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index.",
     )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -117,6 +124,7 @@ def parse_args():
     args = parser.parse_args()
 
     return args
+
 
 def main():
     args = parse_args()
@@ -126,10 +134,10 @@ def main():
 
     # Set logging level to info if verbose
     if args.verbose:
-        level=logging.INFO
+        level = logging.INFO
     else:
         level = logging.WARNING
-    logging.basicConfig(format= "%(asctime)s %(levelname)s %(message)s", level=level)
+    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=level)
 
     # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
@@ -157,15 +165,21 @@ def main():
 
     elif args.grammars:
         grammars = load_ndjson(args.grammars)
-        logging.info(f"Instantiating processors of permuter type {args.permutation_mode} using grammars in {args.grammars}")
+        logging.info(
+            f"Instantiating processors of permuter type {args.permutation_mode} using grammars in {args.grammars}"
+        )
         if not args.permutation_mode == "fixed_order":
-            logging.warning(f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is definitely a waste of compute.")
+            logging.warning(
+                f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is definitely a waste of compute."
+            )
         for grammar in grammars:
             processor = treebank_permuter_factory(args.permutation_mode, grammar)
             treebank_processors.append(processor)
 
     else:
-        logging.info(f"Instantiating single processor of permuter type {args.permutation_mode}")
+        logging.info(
+            f"Instantiating single processor of permuter type {args.permutation_mode}"
+        )
         processor = treebank_permuter_factory(args.permutation_mode)
         treebank_processors.append(processor)
 

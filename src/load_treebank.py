@@ -11,13 +11,15 @@ class TreebankLoader:
 
     def __init__(
         self,
-            remove_config: List[Dict] = None,
-            fields_to_remove: List[AnyStr] = None,
-            min_len: int = 1,
-            max_len: int = 999,
-            mask_words: bool = False,
+        remove_config: List[Dict] = None,
+        fields_to_remove: List[AnyStr] = None,
+        min_len: int = 1,
+        max_len: int = 999,
+        mask_words: bool = False,
     ):
-        self.cleaner = SentenceCleaner(remove_config, fields_to_remove, mask_words=mask_words)
+        self.cleaner = SentenceCleaner(
+            remove_config, fields_to_remove, mask_words=mask_words
+        )
         self.min_len = min_len
         self.max_len = max_len
 

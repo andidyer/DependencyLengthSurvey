@@ -20,6 +20,7 @@ class FileProcessor(ABC):
     - analysis OR permutation
     - dumping to file(s)
     """
+
     fileext = ".txt"
 
     def __init__(self, loader: TreebankLoader):
@@ -77,14 +78,18 @@ class FileProcessor(ABC):
 class FilePermuter(FileProcessor):
     fileext = ".conllu"
 
-    def __init__(self, loader: TreebankLoader, treebank_permuters: List[TreebankPermuter]):
+    def __init__(
+        self, loader: TreebankLoader, treebank_permuters: List[TreebankPermuter]
+    ):
         super().__init__(loader)
         self.treebank_permuters = treebank_permuters
 
     def ingest_conllu_file(self, infile: Path):
         input_treebank = self.load_conllu_file(infile)
         for i, permuter in enumerate(self.treebank_permuters):
-            input_treebank_copy = copy.deepcopy(input_treebank) # Avoid changing values of preceding treebanks
+            input_treebank_copy = copy.deepcopy(
+                input_treebank
+            )  # Avoid changing values of preceding treebanks
             processed = permuter.process_treebank(input_treebank_copy)
             yield from processed
 
@@ -107,7 +112,9 @@ class FileAnalyzer(FileProcessor):
     def ingest_conllu_file(self, infile: Path):
         input_treebank = self.load_conllu_file(infile)
 
-        input_treebank_copy = copy.deepcopy(input_treebank) # Avoid changing values of preceding treebanks
+        input_treebank_copy = copy.deepcopy(
+            input_treebank
+        )  # Avoid changing values of preceding treebanks
         processed = self.treebank_analyzer.process_treebank(input_treebank_copy)
         yield from processed
 
@@ -126,9 +133,15 @@ class FilePermuterAnalyzer(FileProcessor):
     It will only output the final analysis ndjson, not the permuted treebank.
     Prefer to use this when the size of the permuted treebank files would otherwise be unreasonably large.
     """
+
     fileext = ".ndjson"
 
-    def __init__(self, loader: TreebankLoader, treebank_permuters: List[TreebankPermuter], sentence_analyzer: SentenceAnalyzer):
+    def __init__(
+        self,
+        loader: TreebankLoader,
+        treebank_permuters: List[TreebankPermuter],
+        sentence_analyzer: SentenceAnalyzer,
+    ):
         super().__init__(loader)
         self.treebank_permuters = treebank_permuters
         self.sentence_analyzer = sentence_analyzer
@@ -136,7 +149,9 @@ class FilePermuterAnalyzer(FileProcessor):
     def ingest_conllu_file(self, infile: Path):
         input_treebank = self.load_conllu_file(infile)
         for i, permuter in enumerate(self.treebank_permuters):
-            input_treebank_copy = copy.deepcopy(input_treebank) # Avoid changing values of preceding treebanks
+            input_treebank_copy = copy.deepcopy(
+                input_treebank
+            )  # Avoid changing values of preceding treebanks
             permuted_sentence_stream = permuter.process_treebank(input_treebank_copy)
 
             for permuted_sentence in permuted_sentence_stream:

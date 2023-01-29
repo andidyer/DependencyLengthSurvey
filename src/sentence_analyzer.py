@@ -23,9 +23,7 @@ class SentenceAnalyzer(SentenceMainProcessor):
         sentence_data: dict = {
             "id": sentence.metadata["sent_id"],
             "sentlen": get_sentence_length(sentence),
-            "sumdeplen": get_sentence_sum_dependency_length(
-                sentence
-            ),
+            "sumdeplen": get_sentence_sum_dependency_length(sentence),
             "deplens": get_sentence_dependency_lengths(
                 sentence, count_root=self.count_root
             ),
@@ -34,7 +32,7 @@ class SentenceAnalyzer(SentenceMainProcessor):
             ),
             "interveners": get_sentence_intervener_complexities(
                 sentence, count_root=self.count_root
-            )
+            ),
         }
 
         return sentence_data
@@ -57,12 +55,16 @@ def get_sentence_length(sentence: TokenList) -> int:
     return n_tokens
 
 
-def get_sentence_sum_intervener_complexity(sentence: TokenList, count_root=False) -> SupportsInt:
+def get_sentence_sum_intervener_complexity(
+    sentence: TokenList, count_root=False
+) -> SupportsInt:
     complexities = get_sentence_intervener_complexities(sentence, count_root=count_root)
     return sum(complexities)
 
 
-def get_sentence_intervener_complexities(sentence: TokenList, count_root=False) -> List[SupportsInt]:
+def get_sentence_intervener_complexities(
+    sentence: TokenList, count_root=False
+) -> List[SupportsInt]:
     """Get a list of intervener complexities for each token in the sentnece"""
     complexities = []
     heads_map = TokenList.head_to_token(sentence)
@@ -79,10 +81,13 @@ def get_sentence_intervener_complexities(sentence: TokenList, count_root=False) 
             lower = head_id
             upper = dep_id
 
-        intervening_heads = sum(1 for head_id in heads_map if head_id in range(lower,upper))
+        intervening_heads = sum(
+            1 for head_id in heads_map if head_id in range(lower, upper)
+        )
         complexities.append(intervening_heads)
 
     return complexities
+
 
 def get_sentence_dependency_lengths(sentence: TokenList, count_root=False) -> List[int]:
     """Get a list of dependency lengths in the sentence"""

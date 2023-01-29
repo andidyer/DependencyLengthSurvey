@@ -62,7 +62,7 @@ def parse_args():
         type=str,
         nargs="*",
         choices=["form", "lemma", "upos", "xpos", "feats", "deps", "misc"],
-        help="Masks any fields in a conllu that are not necessary; can save some space"
+        help="Masks any fields in a conllu that are not necessary; can save some space",
     )
 
     optional.add_argument(
@@ -104,7 +104,10 @@ def main():
 
     # Make loader with cleaner
     loader = TreebankLoader(
-        remove_config=remove_config, fields_to_remove=args.fields_to_remove, min_len=args.min_len, max_len=args.max_len
+        remove_config=remove_config,
+        fields_to_remove=args.fields_to_remove,
+        min_len=args.min_len,
+        max_len=args.max_len,
     )
 
     # Make treebank analyzer
