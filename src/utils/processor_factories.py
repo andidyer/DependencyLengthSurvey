@@ -3,12 +3,12 @@ from src.sentence_permuter import *
 from src.treebank_processor import TreebankPermuter, TreebankAnalyzer
 
 
-def sentence_analyzer_factory(count_root=False):
-    return SentenceAnalyzer(count_root=count_root)
+def sentence_analyzer_factory(count_root=False, count_direction=False, tokenwise_scores=False):
+    return SentenceAnalyzer(count_root=count_root, count_direction=count_direction, tokenwise_scores=tokenwise_scores)
 
 
-def treebank_analyzer_factory(count_root=False):
-    sentence_analyzer = sentence_analyzer_factory(count_root=count_root)
+def treebank_analyzer_factory(count_root=False, count_direction=False, tokenwise_scores=False):
+    sentence_analyzer = sentence_analyzer_factory(count_root=count_root, count_direction=count_direction, tokenwise_scores=tokenwise_scores)
     return TreebankAnalyzer(sentence_analyzer)
 
 

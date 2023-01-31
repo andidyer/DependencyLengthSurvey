@@ -81,6 +81,17 @@ def parse_args():
         action="store_true",
         help="Include the root node in the sentence analysis",
     )
+    optional.add_argument(
+        "--count_direction",
+        action="store_true",
+        help="Count left and right branching dependencies separately",
+    )
+    optional.add_argument(
+        "--tokenwise_scores",
+        action="store_true",
+        help="""Keep scores of all tokens in a separate field. This is a variable length list.
+        If --count_direction is enabled, then left scores will have a negative sign""",
+    )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
 
@@ -111,7 +122,7 @@ def main():
 
     # Make treebank analyzer
 
-    analyzer = treebank_analyzer_factory(args.count_root)
+    analyzer = treebank_analyzer_factory(args.count_root, args.count_direction, args.tokenwise_scores)
 
     # Make file processor
     file_processor = FileAnalyzer(loader, analyzer)
