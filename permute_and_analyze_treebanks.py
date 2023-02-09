@@ -181,7 +181,7 @@ def main():
     elif args.grammars:
         grammars = load_ndjson(args.grammars)
         logging.info(
-            f"Instantiating {len(grammars)} processors of permuter type {args.permutation_mode}"
+            f"Instantiating processors of permuter type {args.permutation_mode} using grammars in {args.grammars}"
         )
         logging.info(f"Using grammars contained in {args.grammars}")
         if not args.permutation_mode == "fixed_order":

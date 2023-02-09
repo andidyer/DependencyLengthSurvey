@@ -164,7 +164,10 @@ class OptimalProjectivePermuter(SentencePermuter):
 
         for i, subtree in enumerate(children):
             new_branch = self.build_tree(subtree)
-            branch_direction: int = self._directionality_function(subtree, i)
+
+            is_right_dep: bool = (tokentree.token["head"] < tokentree.token["id"])
+
+            branch_direction: int = self._directionality_function(subtree, i+is_right_dep)
 
             if branch_direction < 0:
                 left.append(new_branch)
