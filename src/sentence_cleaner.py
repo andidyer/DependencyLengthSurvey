@@ -13,7 +13,7 @@ class SentenceCleaner(SentencePreProcessor):
         fields_to_empty: List[AnyStr] = None,
         mask_words: bool = False,
     ):
-        self.remove_config = remove_config if isinstance(remove_config, list) else []
+        self.remove_config = [obj for obj in remove_config] if remove_config is not None else []
         self.fields_to_empty = (
             fields_to_empty if isinstance(fields_to_empty, list) else []
         )

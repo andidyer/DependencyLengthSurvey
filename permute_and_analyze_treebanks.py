@@ -146,6 +146,7 @@ def main():
 
     # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
+        print(f"using remove config from {args.remove_config}")
         remove_config = load_ndjson(args.remove_config)
     else:
         remove_config = None

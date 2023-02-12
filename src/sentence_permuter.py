@@ -163,11 +163,11 @@ class OptimalProjectivePermuter(SentencePermuter):
         children = self._ordering_function(tokentree.children)
 
         for i, subtree in enumerate(children):
+
             new_branch = self.build_tree(subtree)
 
-            is_right_dep: bool = (tokentree.token["head"] < tokentree.token["id"])
 
-            branch_direction: int = self._directionality_function(subtree, i+is_right_dep)
+            branch_direction: int = self._directionality_function(subtree, i)
 
             if branch_direction < 0:
                 left.append(new_branch)
@@ -175,6 +175,8 @@ class OptimalProjectivePermuter(SentencePermuter):
                 right.append(new_branch)
             else:
                 raise ValueError("Directionality function must return [-1,1]")
+
+        # Reverse left and right if parent is a right dependency
 
         if self._shuffle_left:
             random.shuffle(left)
