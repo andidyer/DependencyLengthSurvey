@@ -1,8 +1,9 @@
 import argparse
 import random
 from pathlib import Path
+import logging
 
-from src.file_processor import FileAnalyzer
+from src.file_processor import FileProcessor, FileAnalyzer
 from src.load_treebank import TreebankLoader
 from src.utils.fileutils import load_ndjson
 from src.utils.processor_factories import treebank_analyzer_factory

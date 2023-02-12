@@ -1,9 +1,8 @@
-from typing import List, Dict, Tuple, AnyStr
-
 from conllu.models import TokenList
-
 from src.utils.abstractclasses import SentencePreProcessor
 from src.utils.treeutils import fix_token_indices, standardize_deprels
+from typing import List, Dict, Tuple, AnyStr
+import logging
 
 
 class SentenceCleaner(SentencePreProcessor):

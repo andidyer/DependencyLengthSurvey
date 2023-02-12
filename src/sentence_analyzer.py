@@ -1,8 +1,9 @@
 from typing import List, Union, Iterator
 
-from conllu.models import Token, TokenList
-
+from conllu.models import Token, TokenList, SentenceList
 from src.utils.abstractclasses import SentenceMainProcessor
+
+import json
 
 
 class SentenceAnalyzer(SentenceMainProcessor):

@@ -1,6 +1,8 @@
+import logging
+from typing import List, Dict, Union
 from abc import ABC, abstractmethod
 
-from conllu import SentenceList
+from conllu import TokenList, SentenceList
 
 from src.utils.abstractclasses import SentenceMainProcessor
 

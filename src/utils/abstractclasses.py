@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-
-from conllu import TokenList
+from conllu import TokenList, SentenceList
+from typing import Union, List, Iterable
 
 
 class SentenceProcessor(ABC):

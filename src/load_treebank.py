@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import List, Dict, AnyStr
-
 import conllu
 from conllu.models import Token, TokenList, SentenceList
 

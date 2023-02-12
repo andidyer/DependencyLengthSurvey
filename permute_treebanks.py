@@ -1,10 +1,19 @@
 import argparse
-import logging
 import random
 from pathlib import Path
+import logging
 
-from src.file_processor import FilePermuter
+from src.file_processor import FileProcessor, FilePermuter
 from src.load_treebank import TreebankLoader
+from src.sentence_permuter import (
+    RandomProjectivePermuter,
+    RandomSameValencyPermuter,
+    RandomSameSidePermuter,
+    FixedOrderPermuter,
+    OptimalProjectivePermuter,
+    SentencePermuter,
+)
+from src.treebank_processor import TreebankPermuter
 from src.utils.fileutils import load_ndjson
 from src.utils.processor_factories import treebank_permuter_factory
 
