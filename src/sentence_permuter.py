@@ -159,27 +159,32 @@ class OptimalProjectivePermuter(SentencePermuter):
 
     _reverse_left = True
 
-    def build_tree(self, tokentree: TokenTree):
+    def build_tree(self, tokentree: TokenTree, isRight=False):
         left = []
         right = []
 
         children = self._ordering_function(tokentree.children)
 
+        nChildrenIsOdd = len(children) % 2 != 0
+
         for i, subtree in enumerate(children):
 
-            new_branch = self.build_tree(subtree)
-
+            # We need to reverse the direction in light of number of children
+            if isRight and nChildrenIsOdd:
+                i += 1
+            elif not isRight and not nChildrenIsOdd:
+                i += 1
 
             branch_direction: int = self._directionality_function(subtree, i)
 
             if branch_direction < 0:
+                new_branch = self.build_tree(subtree, isRight=False)
                 left.append(new_branch)
             elif branch_direction > 0:
+                new_branch = self.build_tree(subtree, isRight=True)
                 right.append(new_branch)
             else:
                 raise ValueError("Directionality function must return [-1,1]")
-
-        # Reverse left and right if parent is a right dependency
 
         if self._shuffle_left:
             random.shuffle(left)

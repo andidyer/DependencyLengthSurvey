@@ -43,7 +43,7 @@ class SentenceAnalyzer(SentenceMainProcessor):
         if self.count_direction:
             sentence_data.update({
                 "leftarcs": sum(1 for deplen in dependency_lengths if deplen < 0),
-                "rightarcs": sum(1 for deplen in dependency_lengths if deplen >= 0)
+                "rightarcs": sum(1 for deplen in dependency_lengths if deplen > 0)
             })
 
         # Add sum dependency length and ICM information
@@ -88,9 +88,7 @@ class SentenceAnalyzer(SentenceMainProcessor):
 
     def iter_sentence_tokens(self, tokenlist: TokenList):
         for token in tokenlist:
-            if not self.count_root and token["head"] == 0:
-                continue
-            elif not isinstance(token["id"], int):
+            if not isinstance(token["id"], int):
                 continue
             elif not isinstance(token["head"], int):
                 continue
@@ -98,6 +96,9 @@ class SentenceAnalyzer(SentenceMainProcessor):
                 yield token
 
     def get_token_dependency_length(self, token: Token) -> int:
+        if not self.count_root and token["head"] == 0:
+            return 0 # Having this in the results would technically let us reconstruct the tree structure
+
         token_position = token["id"]
         head_position = token["head"]
         dependency_length = token_position - head_position
