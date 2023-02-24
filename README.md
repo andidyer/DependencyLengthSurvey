@@ -1,7 +1,19 @@
 # Dependency Length Survey
 
-This is the working code for our project measuring sentence
-dependency lengths across comparable corpora.
+This code is used in our survey of dependency length in a parallel 
+multilingual corpus. It is part of a replication study of 
+[Futrell and Gibson (2015)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4547262/), 
+but we expect the code to be extended for other, similar projects, and we will
+add new scripts and modules to it periodically.
+
+With this code you can:
+
+- Permute input treebanks according to a permutation model,
+  producing conllu files with the permuted output.
+- Analyse sentences in treebanks for properties such as 
+  dependency lenght, intervener complexity, and more.
+- Perform both these steps in one go.
+
 
 ## Setting up the project.
 
@@ -13,128 +25,119 @@ scripts using the `pip` command and the provided
 user$ pip install -r requirements.txt
 ```
 
-## Getting dependency length data
+## Scripts
 
-### Running the script
+### analyze_treebanks.py
 
-The main script for getting dependency
-length data is `get_dependency_lengths.py`. Given a treebank
-or directory of treebanks in `conllu` format, this script will
-read the treebank(s) and, for each sentence, produce a json
-object containing data about the sentence.
-
-This script can be run as follows:
-
-```text
-usage: get_dependency_lengths.py [-h] [--treebank TREEBANK | --directory DIRECTORY] [--outfile outfile] [--count_root] [--min_len MIN_LEN] [--max_len MAX_LEN]
+```
+usage: analyze_treebanks.py [-h] [--treebank TREEBANK | --directory DIRECTORY] [--glob_pattern GLOB_PATTERN] [--random_seed RANDOM_SEED] [--outfile OUTFILE | --outdir OUTDIR]
+                            [--remove_config REMOVE_CONFIG] [--fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]]
+                            [--min_len MIN_LEN] [--max_len MAX_LEN] [--count_root] [--count_direction] [--tokenwise_scores] [--verbose]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --count_root          Whether to count the dependency length of the root node
-  --min_len MIN_LEN     Exclude sentences with less than a given minimum number of tokens
-  --max_len MAX_LEN     Exclude sentences with more than a given maximum number of tokens
 
 required arguments:
-  --treebank TREEBANK   Treebank to load and analyse
+  --treebank TREEBANK   Treebank to load and permute
   --directory DIRECTORY
-                        Directory to load and analyse
-  --outfile OUTFILE   File to output the per-sentence statistics json to
+                        Directory from which to find treebanks by globbing
+  --outfile OUTFILE     The file to output the permuted treebank(s) to
+  --outdir OUTDIR       The directory to output the permuted treebank(s) to
 
+optional arguments:
+  --glob_pattern GLOB_PATTERN
+                        glob pattern for recursively finding files that match the pattern
+  --random_seed RANDOM_SEED
+                        Random seed for permutation
+  --remove_config REMOVE_CONFIG
+                        ndjson format list of token properties to exclude
+  --fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]
+                        Masks any fields in a conllu that are not necessary; can save some space
+  --min_len MIN_LEN     Exclude sentences with less than a given minimum number of tokens
+  --max_len MAX_LEN     Exclude sentences with more than a given maximum number of tokens
+  --count_root          Include the root node in the sentence analysis
+  --count_direction     Count left and right branching dependencies separately
+  --tokenwise_scores    Keep scores of all tokens in a separate field. This is a variable length list. If --count_direction is enabled, then left scores will have a negative sign      
+  --verbose             Verbosity
 
 ```
 
-For example:
+### permute_treebanks.py
 
-```shell
-user$ python analyze_treebanks.py \
---treebank my_treebank.conllu \
---outfile my_output_file.ndjson
+```
+usage: permute_treebanks.py [-h] [--treebank TREEBANK | --directory DIRECTORY] [--glob_pattern GLOB_PATTERN] [--random_seed RANDOM_SEED]
+                            [--permutation_mode {random_projective,random_same_valency,random_same_side,optimal_projective,original_order,fixed_order}]
+                            [--outfile OUTFILE | --outdir OUTDIR] [--remove_config REMOVE_CONFIG]
+                            [--fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]] [--n_times N_TIMES | --grammars GRAMMARS]        
+                            [--min_len MIN_LEN] [--max_len MAX_LEN] [--mask_words] [--verbose]
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+required arguments:
+  --treebank TREEBANK   Treebank to load and permute
+  --directory DIRECTORY
+                        Directory from which to find treebanks by globbing
+  --permutation_mode {random_projective,random_same_valency,random_same_side,optimal_projective,original_order,fixed_order}
+                        The type of permutation to perform
+  --outfile OUTFILE     The file to output the permuted treebank(s) to
+  --outdir OUTDIR       The directory to output the permuted treebank(s) to
+
+optional arguments:
+  --glob_pattern GLOB_PATTERN
+                        glob pattern for recursively finding files that match the pattern
+  --random_seed RANDOM_SEED
+                        Random seed for permutation
+  --remove_config REMOVE_CONFIG
+                        ndjson format list of token properties to exclude
+  --fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]
+                        Masks any fields in a conllu that are not necessary; can save some space
+  --n_times N_TIMES     Number of times to perform the permutation action on each treebank
+  --grammars GRAMMARS   Number of times to perform the permutation action on each treebank
+  --min_len MIN_LEN     Exclude sentences with less than a given minimum number of tokens
+  --max_len MAX_LEN     Exclude sentences with more than a given maximum number of tokens
+  --mask_words          Mask all words in the treebank. Token forms and lemma will be represented only by original token index.
+  --verbose             Verbosity
+
 ```
 
-Alternatively, if your data is in several treebanks, you can
-read from all files in a specified directory.
+### permute_and_analyze_treebanks.py
 
-```shell
-user$ python analyze_treebanks.py \
---directory my_treebank_directory/ \
---outfile my_output_file.ndjson
 ```
+usage: permute_and_analyze_treebanks.py [-h] [--treebank TREEBANK | --directory DIRECTORY] [--glob_pattern GLOB_PATTERN] [--random_seed RANDOM_SEED]
+                                        [--permutation_mode {random_projective,random_same_valency,random_same_side,optimal_projective,original_order,fixed_order}]
+                                        [--outfile OUTFILE | --outdir OUTDIR] [--remove_config REMOVE_CONFIG]
+                                        [--fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]]
+                                        [--n_times N_TIMES | --grammars GRAMMARS] [--min_len MIN_LEN] [--max_len MAX_LEN] [--count_root] [--count_direction] [--tokenwise_scores]       
+                                        [--verbose]
 
-Note that `--treebank` and `--directory` are mutually exclusive.
-Whichever you use, the data will be dumped to a single file in
-json format specified by `--outfile`.
-For this reason, it is a good idea to ensure that in the case
-of multiple conllu files each individual sentence has a unique
-identifier.
+optional arguments:
+  -h, --help            show this help message and exit
 
-Adding the optional flag `--count_root` will ensure that
-dependency lengths from the root word to the root token will
-also be counted.
-This can be used as follows:
+required arguments:
+  --treebank TREEBANK   Treebank to load and permute
+  --directory DIRECTORY
+                        Directory from which to find treebanks by globbing
+  --permutation_mode {random_projective,random_same_valency,random_same_side,optimal_projective,original_order,fixed_order}
+                        The type of permutation to perform
+  --outfile OUTFILE     The file to output the permuted treebank(s) to
+  --outdir OUTDIR       The directory to output the permuted treebank(s) to
 
-```shell
-user$ python analyze_treebanks.py \
---treebank my_treebank.conllu \
---outfile my_output_file.ndjson \
---count_root
+optional arguments:
+  --glob_pattern GLOB_PATTERN
+                        glob pattern for recursively finding files that match the pattern
+  --random_seed RANDOM_SEED
+                        Random seed for permutation
+  --remove_config REMOVE_CONFIG
+                        ndjson format list of token properties to exclude
+  --fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]
+                        Masks any fields in a conllu that are not necessary; can save some space
+  --n_times N_TIMES     Number of times to perform the permutation action on each treebank
+  --grammars GRAMMARS   Number of times to perform the permutation action on each treebank
+  --min_len MIN_LEN     Exclude sentences with less than a given minimum number of tokens
+  --max_len MAX_LEN     Exclude sentences with more than a given maximum number of tokens
+  --count_root          Include the root node in the sentence analysis
+  --count_direction     Count left and right branching dependencies separately
+  --tokenwise_scores    Keep scores of all tokens in a separate field. This is a variable length list. If --count_direction is enabled, then left scores will have a negative sign      
+  --verbose             Verbosity
 ```
-
-You can use the options `--min_len` and `--max_len` to exclude sentences that have
-fewer than a minimum or more than a maximum number of tokens. For example:
-
-```shell
-user$ python analyze_treebanks.py \
---treebank my_treebank.conllu \
---outfile my_output_file.ndjson \
---min_len 5 \
---max_len 25
-```
-
-### The output
-
-The output of the script is a file in ndjson format containing a
-list of json objects, where each object contains
-
-- `sentence_id`: The sentence ID (taken from the sentence metadata in the conllu file)
-- `sentence_length`: The sentence length (in tokens, excluding those that have been excluded from the analysis)
-- `sentence_sum_dependency_length`: The sum dependency length of the sentence (the sum of dependency lengths between all
-  relation pairs in the sentence)
-- `sentence_dependency_lengths`: A list of individual dependency lengths in the sentence (excluding those tokens
-  excluded from the analysis)
-
-This file should be named with the file extension `.ndjson`.
-
-### Considerations
-
-- The script is currently set up to ignore punctuation tokens,
-  as well as the root of the sentence. That is to say that the
-  lengths of dependency from a punctuation token to its head and
-  from the token with head 0 are ignored.
-- Any sentences with disjoint trees are currently ignored.
-- Non-standard tokens such as enhanced dependencies and
-  multiword tokens are ignored.
-
-## Analysing dependency length data
-
-Not yet implemented.
-
-This script will analyse the sentence data generated by `get_dependency_lengths.py`.
-
-## Permuting treebanks
-
-Not yet implemented.
-
-This script will produce permutations of treebanks according to set permutation functions.
-These permutations will serve as baselines and counterfactuals, which we will use to
-determine whether observed dependency lengths in real corpora are systematically lower
-than what might be expected by chance.
-
-## TODO:
-
-- [x] Option to toggle ignore root.
-- [x] Option to filter sentences by max and min number of tokens
-- [ ] Argument for filtering tokens based on fields
-  and features.
-- [ ] Ability to filter multiple values within a field
-- [ ] Option to toggle allow disjoint trees
-- [ ] Start working on treebank permutation models
