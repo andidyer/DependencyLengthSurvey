@@ -109,6 +109,10 @@ class SentenceAnalyzer(SentenceMainProcessor):
         return dependency_length
 
     def get_token_intervener_complexity(self, heads_list: List, token: Token):
+
+        if not self.count_root and token["head"] == 0:
+            return 0  # Having this in the results would technically let us reconstruct the tree structure
+
         dep_id = token["id"]
         head_id = token["head"]
 

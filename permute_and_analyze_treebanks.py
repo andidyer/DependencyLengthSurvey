@@ -4,19 +4,14 @@ from pathlib import Path
 import logging
 
 from src.file_processor import FileProcessor
-from src.file_dumper import FileDumper
 from src.load_treebank import TreebankLoader
-from src.sentence_permuter import (
-    RandomProjectivePermuter,
-    RandomSameValencyPermuter,
-    RandomSameSidePermuter,
-    FixedOrderPermuter,
-    OptimalProjectivePermuter,
-    SentencePermuter,
-)
-from src.treebank_processor import TreebankPermuter
+from src.file_dumper import FileDumper
 from src.utils.fileutils import load_ndjson
-from src.utils.processor_factories import sentence_permuter_factory, treebank_permuter_factory
+from src.utils.processor_factories import (
+    treebank_permuter_factory,
+    sentence_analyzer_factory,
+    treebank_permuter_analyzer_factory,
+)
 
 
 def parse_args():
@@ -115,9 +110,20 @@ def parse_args():
         help="Exclude sentences with more than a given maximum number of tokens",
     )
     optional.add_argument(
-        "--mask_words",
+        "--count_root",
         action="store_true",
-        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index.",
+        help="Include the root node in the sentence analysis",
+    )
+    optional.add_argument(
+        "--count_direction",
+        action="store_true",
+        help="Count left and right branching dependencies separately",
+    )
+    optional.add_argument(
+        "--tokenwise_scores",
+        action="store_true",
+        help="""Keep scores of all tokens in a separate field. This is a variable length list.
+        If --count_direction is enabled, then left scores will have a negative sign""",
     )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -130,9 +136,6 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Set random seed
-    random.seed(args.random_seed)
-
     # Set logging level to info if verbose
     if args.verbose:
         level = logging.INFO
@@ -140,8 +143,12 @@ def main():
         level = logging.WARNING
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=level)
 
+    # Set random seed
+    random.seed(args.random_seed)
+
     # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
+        print(f"using remove config from {args.remove_config}")
         remove_config = load_ndjson(args.remove_config)
     else:
         remove_config = None
@@ -152,24 +159,49 @@ def main():
         fields_to_remove=args.fields_to_remove,
         min_len=args.min_len,
         max_len=args.max_len,
-        mask_words=args.mask_words,
     )
 
+    # Make treebank processors
+    treebank_permuters = []
+
     if args.n_times:
-        treebank_processor = treebank_permuter_factory(args.permutation_mode, n_times=args.n_times)
+        logging.info(
+            f"Instantiating {args.n_times} processors of permuter type {args.permutation_mode}"
+        )
+        treebank_processor = treebank_permuter_analyzer_factory(
+            args.permutation_mode,
+            n_times=args.n_times,
+            count_root=args.count_root,
+            count_direction=args.count_direction,
+            tokenwise_scores=args.tokenwise_scores,
+        )
 
     elif args.grammars:
         grammars = list(load_ndjson(args.grammars))
-        treebank_processor = treebank_permuter_factory(args.permutation_mode, grammars=grammars)
+
+        logging.info(
+            f"""
+            Instantiating {len(grammars)} processors of permuter type {args.permutation_mode} 
+            from grammars in {args.grammars}
+            """
+        )
+
+        treebank_processor = treebank_permuter_analyzer_factory(
+            args.permutation_mode,
+            grammars=grammars,
+            count_root=args.count_root,
+            count_direction=args.count_direction,
+            tokenwise_scores=args.tokenwise_scores,
+        )
 
     else:
         logging.info(
             f"Instantiating single processor of permuter type {args.permutation_mode}"
         )
-        treebank_processor = treebank_permuter_factory(args.permutation_mode)
+        treebank_processor = treebank_permuter_analyzer_factory(args.permutation_mode)
 
     # Make file dumper
-    file_dumper = FileDumper(extension=".conllu")
+    file_dumper = FileDumper(extension=".ndjson")
 
     # Make file processor
     file_processor = FileProcessor(loader, treebank_processor, file_dumper)

@@ -3,8 +3,9 @@ import random
 from pathlib import Path
 import logging
 
-from src.file_processor import FileProcessor, FileAnalyzer
+from src.file_processor import FileProcessor
 from src.load_treebank import TreebankLoader
+from src.file_dumper import FileDumper
 from src.utils.fileutils import load_ndjson
 from src.utils.processor_factories import treebank_analyzer_factory
 
@@ -127,8 +128,11 @@ def main():
         args.count_root, args.count_direction, args.tokenwise_scores
     )
 
+    # Make file dumper
+    dumper = FileDumper(extension=".ndjson")
+
     # Make file processor
-    file_processor = FileAnalyzer(loader, analyzer)
+    file_processor = FileProcessor(loader, analyzer, dumper)
 
     # Handle input and output
     if args.treebank and args.outfile:
@@ -142,9 +146,7 @@ def main():
         file_processor.process_glob(args.directory, args.glob_pattern, args.outdir)
 
     else:
-        raise argparse.ArgumentError(
-            "Incorrect or incompatible use of input and output options."
-        )
+        raise ValueError("Incorrect or incompatible use of input and output options.")
 
 
 if __name__ == "__main__":
