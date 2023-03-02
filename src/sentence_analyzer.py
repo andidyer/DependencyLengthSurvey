@@ -1,9 +1,8 @@
 from typing import List, Union, Iterator
 
-from conllu.models import Token, TokenList, SentenceList
-from src.utils.abstractclasses import SentenceMainProcessor
+from conllu.models import Token, TokenList
 
-import json
+from src.utils.abstractclasses import SentenceMainProcessor
 
 
 class SentenceAnalyzer(SentenceMainProcessor):
@@ -41,10 +40,12 @@ class SentenceAnalyzer(SentenceMainProcessor):
         )
 
         if self.count_direction:
-            sentence_data.update({
-                "leftarcs": sum(1 for deplen in dependency_lengths if deplen < 0),
-                "rightarcs": sum(1 for deplen in dependency_lengths if deplen > 0)
-            })
+            sentence_data.update(
+                {
+                    "leftarcs": sum(1 for deplen in dependency_lengths if deplen < 0),
+                    "rightarcs": sum(1 for deplen in dependency_lengths if deplen > 0),
+                }
+            )
 
         # Add sum dependency length and ICM information
         if self.count_direction:
@@ -61,7 +62,9 @@ class SentenceAnalyzer(SentenceMainProcessor):
             sentence_data.update(
                 {
                     "leftICM": sum(abs(ic) for ic in intervener_complexities if ic < 0),
-                    "rightICM": sum(abs(ic) for ic in intervener_complexities if ic >= 0),
+                    "rightICM": sum(
+                        abs(ic) for ic in intervener_complexities if ic >= 0
+                    ),
                 }
             )
 
@@ -97,7 +100,7 @@ class SentenceAnalyzer(SentenceMainProcessor):
 
     def get_token_dependency_length(self, token: Token) -> int:
         if not self.count_root and token["head"] == 0:
-            return 0 # Having this in the results would technically let us reconstruct the tree structure
+            return 0  # Having this in the results would technically let us reconstruct the tree structure
 
         token_position = token["id"]
         head_position = token["head"]

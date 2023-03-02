@@ -3,19 +3,10 @@ import random
 from pathlib import Path
 import logging
 
-from src.file_processor import FileProcessor, FilePermuter
+from src.file_processor import FileProcessor, FileAnalyzer
 from src.load_treebank import TreebankLoader
-from src.sentence_permuter import (
-    RandomProjectivePermuter,
-    RandomSameValencyPermuter,
-    RandomSameSidePermuter,
-    FixedOrderPermuter,
-    OptimalProjectivePermuter,
-    SentencePermuter,
-)
-from src.treebank_processor import TreebankPermuter
 from src.utils.fileutils import load_ndjson
-from src.utils.processor_factories import treebank_permuter_factory
+from src.utils.processor_factories import treebank_analyzer_factory
 
 
 def parse_args():
@@ -46,19 +37,6 @@ def parse_args():
     optional.add_argument(
         "--random_seed", type=int, default=0, help="Random seed for permutation"
     )
-    required.add_argument(
-        "--permutation_mode",
-        type=str,
-        choices=(
-            "random_projective",
-            "random_same_valency",
-            "random_same_side",
-            "optimal_projective",
-            "original_order",
-            "fixed_order",
-        ),
-        help="The type of permutation to perform",
-    )
 
     output = required.add_mutually_exclusive_group()
 
@@ -87,20 +65,6 @@ def parse_args():
         help="Masks any fields in a conllu that are not necessary; can save some space",
     )
 
-    repetitions = optional.add_mutually_exclusive_group()
-
-    repetitions.add_argument(
-        "--n_times",
-        type=int,
-        help="Number of times to perform the permutation action on each treebank",
-    )
-
-    repetitions.add_argument(
-        "--grammars",
-        type=Path,
-        help="Number of times to perform the permutation action on each treebank",
-    )
-
     optional.add_argument(
         "--min_len",
         type=int,
@@ -114,9 +78,20 @@ def parse_args():
         help="Exclude sentences with more than a given maximum number of tokens",
     )
     optional.add_argument(
-        "--mask_words",
+        "--count_root",
         action="store_true",
-        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index.",
+        help="Include the root node in the sentence analysis",
+    )
+    optional.add_argument(
+        "--count_direction",
+        action="store_true",
+        help="Count left and right branching dependencies separately",
+    )
+    optional.add_argument(
+        "--tokenwise_scores",
+        action="store_true",
+        help="""Keep scores of all tokens in a separate field. This is a variable length list.
+        If --count_direction is enabled, then left scores will have a negative sign""",
     )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -132,13 +107,6 @@ def main():
     # Set random seed
     random.seed(args.random_seed)
 
-    # Set logging level to info if verbose
-    if args.verbose:
-        level = logging.INFO
-    else:
-        level = logging.WARNING
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=level)
-
     # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
         remove_config = load_ndjson(args.remove_config)
@@ -151,40 +119,16 @@ def main():
         fields_to_remove=args.fields_to_remove,
         min_len=args.min_len,
         max_len=args.max_len,
-        mask_words=args.mask_words,
     )
 
-    # Make treebank processors
-    treebank_processors = []
+    # Make treebank analyzer
 
-    if args.n_times:
-
-        for i in range(args.n_times):
-            processor = treebank_permuter_factory(args.permutation_mode)
-            treebank_processors.append(processor)
-
-    elif args.grammars:
-        grammars = load_ndjson(args.grammars)
-        logging.info(
-            f"Instantiating processors of permuter type {args.permutation_mode} using grammars in {args.grammars}"
-        )
-        if not args.permutation_mode == "fixed_order":
-            logging.warning(
-                f"Grammars are only compatible with a fixed_order permuter. Attempting to use it with any other type may cause errors and is definitely a waste of compute."
-            )
-        for grammar in grammars:
-            processor = treebank_permuter_factory(args.permutation_mode, grammar)
-            treebank_processors.append(processor)
-
-    else:
-        logging.info(
-            f"Instantiating single processor of permuter type {args.permutation_mode}"
-        )
-        processor = treebank_permuter_factory(args.permutation_mode)
-        treebank_processors.append(processor)
+    analyzer = treebank_analyzer_factory(
+        args.count_root, args.count_direction, args.tokenwise_scores
+    )
 
     # Make file processor
-    file_processor = FilePermuter(loader, treebank_processors)
+    file_processor = FileAnalyzer(loader, analyzer)
 
     # Handle input and output
     if args.treebank and args.outfile:

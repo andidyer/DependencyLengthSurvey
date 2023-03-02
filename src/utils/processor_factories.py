@@ -3,17 +3,28 @@ from src.sentence_permuter import *
 from src.treebank_processor import TreebankPermuter, TreebankAnalyzer
 
 
-def sentence_analyzer_factory(count_root=False, count_direction=False, tokenwise_scores=False):
-    return SentenceAnalyzer(count_root=count_root, count_direction=count_direction, tokenwise_scores=tokenwise_scores)
+def sentence_analyzer_factory(
+    count_root=False, count_direction=False, tokenwise_scores=False
+):
+    return SentenceAnalyzer(
+        count_root=count_root,
+        count_direction=count_direction,
+        tokenwise_scores=tokenwise_scores,
+    )
 
 
-def treebank_analyzer_factory(count_root=False, count_direction=False, tokenwise_scores=False):
-    sentence_analyzer = sentence_analyzer_factory(count_root=count_root, count_direction=count_direction, tokenwise_scores=tokenwise_scores)
+def treebank_analyzer_factory(
+    count_root=False, count_direction=False, tokenwise_scores=False
+):
+    sentence_analyzer = sentence_analyzer_factory(
+        count_root=count_root,
+        count_direction=count_direction,
+        tokenwise_scores=tokenwise_scores,
+    )
     return TreebankAnalyzer(sentence_analyzer)
 
 
-def sentence_permuter_factory(mode: str, *grammar):
-    # Grammar is unpacked here, but at most this will support one.
+def sentence_permuter_factory(mode: str, grammar: Dict=None):
     if mode == "random_projective":
         return RandomProjectivePermuter()
     elif mode == "random_same_valency":
@@ -25,7 +36,7 @@ def sentence_permuter_factory(mode: str, *grammar):
     elif mode == "original_order":
         return SentencePermuter()
     elif mode == "fixed_order":
-        return FixedOrderPermuter(*grammar)
+        return FixedOrderPermuter(grammar)
     else:
         raise ValueError(
             f"""Invalid permutation mode {mode} Choose from:
@@ -37,8 +48,11 @@ def sentence_permuter_factory(mode: str, *grammar):
                                 - fixed_order"""
         )
 
-
-def treebank_permuter_factory(mode: str, *grammar):
-    # Grammar is unpacked here, but at most these will support one.
-    sentence_permuter = sentence_permuter_factory(mode, *grammar)
-    return TreebankPermuter(sentence_permuter)
+def treebank_permuter_factory(mode: str, grammars: List[Dict] = None, n_times=1):
+    if isinstance(grammars, list) and mode == "fixed_order":
+        sentence_permuters = list(sentence_permuter_factory(mode, grammar=grammar) for grammar in grammars)
+    elif mode.startswith("random"):
+        sentence_permuters = list(sentence_permuter_factory(mode) for i in range(n_times))
+    else:
+        sentence_permuters = [sentence_permuter_factory(mode)]
+    return TreebankPermuter(sentence_permuters)
