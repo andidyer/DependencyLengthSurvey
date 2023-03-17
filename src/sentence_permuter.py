@@ -229,29 +229,3 @@ class FixedOrderPermuter(SentencePermuter):
             return -1
         else:
             return 1
-
-
-def sentence_permuter_factory(mode: str, *grammar):
-    # Grammar is unpacked here, but at most these will support one.
-    if mode == "random_projective":
-        return RandomProjectivePermuter()
-    elif mode == "random_same_valency":
-        return RandomSameValencyPermuter()
-    elif mode == "random_same_side":
-        return RandomSameSidePermuter()
-    elif mode == "optimal_projective":
-        return OptimalProjectivePermuter()
-    elif mode == "original_order":
-        return SentencePermuter
-    elif mode == "fixed_order":
-        return FixedOrderPermuter(*grammar)
-    else:
-        raise ValueError(
-            f"""Invalid permutation mode {mode} Choose from:
-                                - random_projective
-                                - random_same_valency
-                                - random_same_side
-                                - optimal_projective
-                                - original_order
-                                - fixed_order"""
-        )
