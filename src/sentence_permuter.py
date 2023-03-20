@@ -1,5 +1,5 @@
 import random
-from typing import Callable, List, Dict, SupportsInt
+from typing import Callable, List, Dict
 from collections import defaultdict
 from itertools import cycle
 from abc import ABC, abstractmethod
@@ -7,7 +7,12 @@ import logging
 
 from conllu.models import Token, TokenList, TokenTree, SentenceList
 
-from src.utils.treeutils import fix_token_indices, get_tree_weight, Node
+from src.utils.treeutils import get_tree_weight, Node
+from src.utils.decorators import (
+    preserve_metadata,
+    fix_token_indices,
+    deepcopy_tokenlist,
+)
 from src.utils.abstractclasses import SentenceMainProcessor
 
 
@@ -19,21 +24,22 @@ class SentencePermuter(SentenceMainProcessor):
     _reverse_left = False
     _reverse_right = False
 
+    @deepcopy_tokenlist
     def process_sentence(self, sentence: TokenList, **kwargs):
-        new_sentence = sentence.copy()
-        permuted_sentence = self.permutation_function(new_sentence)
+        permuted_sentence = self.permutation_function(sentence)
         return permuted_sentence
 
+    @preserve_metadata
+    @fix_token_indices
     def permutation_function(self, sentence: TokenList):
-        new_sentence = sentence.copy()
-        sentence_tree = new_sentence.to_tree()
+        sentence_tree = sentence.to_tree()
         nodetree = self.build_tree(sentence_tree)
-        new_sentence = self._make_new_tokenlist_from_tree(nodetree, sentence.metadata)
-        new_sentence = fix_token_indices(new_sentence)
+        new_sentence = self._make_new_tokenlist_from_tree(nodetree)
         return new_sentence
 
-    def _make_new_tokenlist_from_tree(self, nodetree: Node, metadata: dict):
-        new_sentence = TokenList(list(nodetree.traverse()), metadata=metadata)
+    def _make_new_tokenlist_from_tree(self, nodetree: Node):
+        tokens = list(nodetree.traverse())
+        new_sentence = TokenList(tokens)
         return new_sentence
 
     def build_tree(self, tokentree: TokenTree):
@@ -44,7 +50,7 @@ class SentencePermuter(SentenceMainProcessor):
 
         for i, subtree in enumerate(children):
             new_branch = self.build_tree(subtree)
-            branch_direction: SupportsInt = self._directionality_function(subtree)
+            branch_direction: int = self._directionality_function(subtree)
 
             if branch_direction < 0:
                 left.append(new_branch)
@@ -67,7 +73,7 @@ class SentencePermuter(SentenceMainProcessor):
         )
         return permutation_tree
 
-    def _directionality_function(self, subtree: TokenTree) -> SupportsInt:
+    def _directionality_function(self, subtree: TokenTree) -> int:
         # Must be overriden with a function that takes subtree as an argument and returns [-1,1]
         head_position = subtree.token["head"]
         dependent_position = subtree.token["id"]
@@ -87,7 +93,7 @@ class RandomProjectivePermuter(SentencePermuter):
     _shuffle_left = True
     _shuffle_right = True
 
-    def _directionality_function(self, subtree: TokenTree, **kwargs) -> SupportsInt:
+    def _directionality_function(self, subtree: TokenTree, **kwargs) -> int:
         return random.choice([-1, 1])
 
 
@@ -104,6 +110,7 @@ class RandomSameValencyPermuter(SentencePermuter):
     _shuffle_left = True
     _shuffle_right = True
 
+    @deepcopy_tokenlist
     def build_tree(self, tokentree: TokenTree):
         left = []
         right = []
@@ -111,13 +118,13 @@ class RandomSameValencyPermuter(SentencePermuter):
         children = self._ordering_function(tokentree.children)
 
         # Find the number of tokens that can be on the left
-        left_branches: SupportsInt = sum(
+        left_branches: int = sum(
             1 for child in children if child.token["id"] < child.token["head"]
         )
 
         for i, subtree in enumerate(children):
             new_branch = self.build_tree(subtree)
-            branch_direction: SupportsInt = self._directionality_function(
+            branch_direction: int = self._directionality_function(
                 subtree, i, left_branches
             )
 
@@ -143,8 +150,8 @@ class RandomSameValencyPermuter(SentencePermuter):
         return permutation_tree
 
     def _directionality_function(
-        self, subtree: TokenTree, i: SupportsInt = 0, n_left: SupportsInt = 0
-    ) -> SupportsInt:
+        self, subtree: TokenTree, i: int = 0, n_left: int = 0
+    ) -> int:
         if i < n_left:
             return -1
         else:
@@ -223,7 +230,7 @@ class FixedOrderPermuter(SentencePermuter):
     def _ordering_function(self, tree_children: List[TokenTree]):
         return sorted(tree_children, key=lambda child: abs(self._lookup_deprel(child)))
 
-    def _directionality_function(self, subtree: TokenTree) -> SupportsInt:
+    def _directionality_function(self, subtree: TokenTree) -> int:
         position_value: float = self._lookup_deprel(subtree)
         if position_value < 0:
             return -1

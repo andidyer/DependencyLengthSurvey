@@ -27,11 +27,14 @@ class TreebankLoader:
         sentences = self.iter_load_treebank(infile)
         return SentenceList(sentences)
 
+    def clean_sentence(self, tokenlist: TokenList):
+        return self.cleaner.process_sentence(tokenlist)
+
     def iter_load_treebank(self, infile: Path):
         with open(infile, encoding="utf-8") as fin:
             sentence_generator = conllu.parse_incr(fin)
             for sentence in sentence_generator:
-                sentence = self.cleaner(sentence)
+                sentence = self.clean_sentence(sentence)
                 if (
                     self._filter_with_sanity_checks(sentence)
                     and self.min_len <= len(sentence) <= self.max_len

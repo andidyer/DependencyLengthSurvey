@@ -41,6 +41,7 @@ def get_tree_weight(tree: TokenTree):
 def make_index_mapping(tokenlist: TokenList) -> dict:
     index_mapping = {0: 0, None: None}
     i = 1
+
     for token in tokenlist:
         if isinstance(token["id"], int):
             index_mapping[token["id"]] = i
@@ -49,16 +50,14 @@ def make_index_mapping(tokenlist: TokenList) -> dict:
 
 
 def fix_token_indices(tokenlist: TokenList):
-    new_tokenlist = tokenlist.copy()
-
-    index_mapping = make_index_mapping(new_tokenlist)
-    for i, token in enumerate(new_tokenlist):
+    index_mapping = make_index_mapping(tokenlist)
+    for i, token in enumerate(tokenlist):
         token_id = token["id"]
         token_head = token["head"]
-        new_tokenlist[i]["id"] = index_mapping[token_id]
-        new_tokenlist[i]["head"] = index_mapping[token_head]
+        tokenlist[i]["id"] = index_mapping[token_id]
+        tokenlist[i]["head"] = index_mapping[token_head]
 
-    return new_tokenlist
+    return tokenlist
 
 
 def standardize_deprels(sentence: TokenList):
