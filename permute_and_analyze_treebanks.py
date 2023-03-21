@@ -5,6 +5,7 @@ import logging
 
 from src.file_processor import FileProcessor
 from src.load_treebank import TreebankLoader
+from src.sentence_cleaner import SentenceCleaner
 from src.file_dumper import FileDumper
 from src.utils.fileutils import load_ndjson
 from src.utils.processor_factories import (
@@ -153,16 +154,16 @@ def main():
     else:
         remove_config = None
 
-    # Make loader with cleaner
+    # Make cleaner
+    cleaner = SentenceCleaner(remove_config, args.fields_to_remove, args.mask_words)
+
+    # Make loader
     loader = TreebankLoader(
-        remove_config=remove_config,
-        fields_to_remove=args.fields_to_remove,
+        cleaner=cleaner,
         min_len=args.min_len,
         max_len=args.max_len,
     )
 
-    # Make treebank processors
-    treebank_permuters = []
 
     if args.n_times:
         logging.info(
@@ -218,7 +219,7 @@ def main():
         file_processor.process_glob(args.directory, args.glob_pattern, args.outdir)
 
     else:
-        raise argparse.ArgumentError(
+        raise ValueError(
             "Incorrect or incompatible use of input and output options."
         )
 

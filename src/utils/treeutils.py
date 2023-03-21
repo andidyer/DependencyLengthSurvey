@@ -48,18 +48,6 @@ def make_index_mapping(tokenlist: TokenList) -> dict:
             i += 1
     return index_mapping
 
-
-def fix_token_indices(tokenlist: TokenList):
-    index_mapping = make_index_mapping(tokenlist)
-    for i, token in enumerate(tokenlist):
-        token_id = token["id"]
-        token_head = token["head"]
-        tokenlist[i]["id"] = index_mapping[token_id]
-        tokenlist[i]["head"] = index_mapping[token_head]
-
-    return tokenlist
-
-
 def standardize_deprels(sentence: TokenList):
     new_sentence = sentence.copy()
 

@@ -54,10 +54,14 @@ def fix_token_indices(function: Callable):
 def _fix_token_indices(tokenlist: TokenList):
 
     index_mapping = make_index_mapping(tokenlist)
+
     for i, token in enumerate(tokenlist):
         token_id = token["id"]
         token_head = token["head"]
         tokenlist[i]["id"] = index_mapping[token_id]
-        tokenlist[i]["head"] = index_mapping[token_head]
+        if token_head not in index_mapping:
+            tokenlist[i]["head"] = 0
+        else:
+            tokenlist[i]["head"] = index_mapping[token_head]
 
     return tokenlist

@@ -11,15 +11,15 @@ class TreebankLoader:
 
     def __init__(
         self,
-        remove_config: List[Dict] = None,
-        fields_to_remove: List[AnyStr] = None,
+        cleaner: SentenceCleaner = None,
         min_len: int = 1,
         max_len: int = 999,
-        mask_words: bool = False,
     ):
-        self.cleaner = SentenceCleaner(
-            remove_config, fields_to_remove, mask_words=mask_words
-        )
+        if cleaner is None:
+            self.cleaner = SentenceCleaner()
+        else:
+            self.cleaner = cleaner
+
         self.min_len = min_len
         self.max_len = max_len
 
@@ -35,21 +35,10 @@ class TreebankLoader:
             sentence_generator = conllu.parse_incr(fin)
             for sentence in sentence_generator:
                 sentence = self.clean_sentence(sentence)
-                if (
-                    self._filter_with_sanity_checks(sentence)
-                    and self.min_len <= len(sentence) <= self.max_len
-                ):
+                if self.filter_with_length_limits(sentence):
                     yield sentence
 
-    def _filter_with_sanity_checks(self, sentence: TokenList):
-        checks = [
-            SanityChecks.sentence_has_single_root(sentence),
-            SanityChecks.sentence_has_no_orphans(sentence),
-        ]
-        if all(checks):
-            return True
-
-    def _filter_with_length_limits(self, sentence: TokenList):
+    def filter_with_length_limits(self, sentence: TokenList):
         if self.min_len <= len(sentence) <= self.max_len:
             return True
         else:
