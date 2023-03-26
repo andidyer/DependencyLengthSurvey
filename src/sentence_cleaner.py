@@ -28,8 +28,6 @@ class SentenceCleaner(SentencePreProcessor):
         self.mask_words = mask_words
 
     @deepcopy_tokenlist
-    @preserve_metadata
-    @fix_token_indices
     def process_sentence(self, sentence: TokenList, **kwargs):
         sentence = self.remove_nonstandard_tokens(sentence)
         if self.mask_words:
