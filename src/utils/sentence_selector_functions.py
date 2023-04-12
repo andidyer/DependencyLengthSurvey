@@ -3,12 +3,9 @@ from conllu import Token, TokenList
 from typing import List, Generator
 
 
-
 def make_token_mapping(tokenlist: TokenList):
 
     mapping = {0: {"Token": None, "Head": None, "Dependants": []}}
-
-    tokenlist = tokenlist.filter(id=lambda id_: isinstance(id_, int))
 
     # First pass: makes id2token map
     for token in tokenlist:
@@ -25,6 +22,7 @@ def make_token_mapping(tokenlist: TokenList):
         mapping[head_id]["Dependants"].append( mapping[token_id]["Token"] )
 
     return mapping
+
 
 def _token_fields_match(query: Query, token: Token):
     query_token_fields = query.token_fields_dict()
@@ -172,15 +170,15 @@ def token_recursive_match(mapping: dict, query: Query, token: Token):
 
 def sentence_recursive_match(query: Query, tokenlist: TokenList):
 
-    # Make token mapping
-    token_mapping = make_token_mapping(tokenlist)
+    mapping = make_token_mapping(tokenlist)
 
-    # Make output token list
-    output_token_list = []
+    output_tokens = []
 
-    # Loop over tokens to get matching tokens
     for token in tokenlist:
-        matching_tokens = token_recursive_match(token_mapping, query, token)
-        output_token_list.extend( [tok for tok in matching_tokens if token not in output_token_list] )
+        result = token_recursive_match(mapping, query, token)
+        if result:
+            for token in result:
+                if token not in output_tokens:
+                    output_tokens.append(token)
 
-    return output_token_list
+    return output_tokens

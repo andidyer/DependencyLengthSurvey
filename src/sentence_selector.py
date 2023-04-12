@@ -12,6 +12,8 @@ TOKEN_FIELDS = ("form", "lemma", "upos", "xpos", "deprel")
 
 class SentenceSelector(SentencePreProcessor):
     def __init__(self, query: dict = None):
+        if query is None:
+            query = {}
         self.query = make_query_from_dict(query)
 
     @deepcopy_tokenlist

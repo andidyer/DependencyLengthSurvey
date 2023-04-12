@@ -4,6 +4,7 @@ from pathlib import Path
 import logging
 
 from src.file_processor import FileProcessor
+from src.sentence_cleaner import SentenceCleaner
 from src.load_treebank import TreebankLoader
 from src.file_dumper import FileDumper
 from src.utils.fileutils import load_ndjson
@@ -17,6 +18,7 @@ def parse_args():
     optional = parser.add_argument_group("optional arguments")
 
     treebank_source = required.add_mutually_exclusive_group()
+    analysis_mode = required.add_mutually_exclusive_group()
 
     treebank_source.add_argument(
         "--treebank", type=Path, help="Treebank to load and permute"
@@ -26,6 +28,14 @@ def parse_args():
         "--directory",
         type=Path,
         help="Directory from which to find treebanks by globbing",
+    )
+
+    analysis_mode.add_argument(
+        "--analysis_modes",
+        type=str,
+        nargs="+",
+        choices=["DependencyLength", "IntervenerComplexity", "SemanticSimilarity", "WordFrequency", "WordZipfFrequency"],
+        help="Metrics with which to analyse tokens/sentences"
     )
 
     optional.add_argument(
@@ -67,32 +77,41 @@ def parse_args():
     )
 
     optional.add_argument(
+        "--mask_words",
+        action="store_true",
+        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index.",
+    )
+
+    optional.add_argument(
         "--min_len",
         type=int,
         default=1,
         help="Exclude sentences with less than a given minimum number of tokens",
     )
+
     optional.add_argument(
         "--max_len",
         type=int,
         default=999,
         help="Exclude sentences with more than a given maximum number of tokens",
     )
+
     optional.add_argument(
         "--count_root",
         action="store_true",
         help="Include the root node in the sentence analysis",
     )
+
     optional.add_argument(
-        "--count_direction",
-        action="store_true",
-        help="Count left and right branching dependencies separately",
+        "--language",
+        type=str,
+        help="Language (ISO639-1) for the WordFrequency analyzer",
     )
+
     optional.add_argument(
-        "--tokenwise_scores",
+        "--aggregate",
         action="store_true",
-        help="""Keep scores of all tokens in a separate field. This is a variable length list.
-        If --count_direction is enabled, then left scores will have a negative sign""",
+        help="If true, token scores will be aggregated and the results for each sentence will be output in an ndjson",
     )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -114,10 +133,12 @@ def main():
     else:
         remove_config = None
 
-    # Make loader with cleaner
+    # Make cleaner
+    cleaner = SentenceCleaner(remove_config, args.fields_to_remove, args.mask_words)
+
+    # Make loader
     loader = TreebankLoader(
-        remove_config=remove_config,
-        fields_to_remove=args.fields_to_remove,
+        cleaner=cleaner,
         min_len=args.min_len,
         max_len=args.max_len,
     )
@@ -125,11 +146,18 @@ def main():
     # Make treebank analyzer
 
     analyzer = treebank_analyzer_factory(
-        args.count_root, args.count_direction, args.tokenwise_scores
+        args.analysis_modes,
+        count_root=args.count_root,
+        aggregate=args.aggregate,
+        language=args.language,
     )
 
     # Make file dumper
-    dumper = FileDumper(extension=".ndjson")
+    if args.aggregate:
+        file_format = ".ndjson"
+    else:
+        file_format = ".conllu"
+    dumper = FileDumper(extension=file_format)
 
     # Make file processor
     file_processor = FileProcessor(loader, analyzer, dumper)
