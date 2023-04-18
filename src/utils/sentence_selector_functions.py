@@ -1,31 +1,54 @@
 from src.utils.recursive_query import Query
 from conllu import Token, TokenList
-from typing import List, Generator
+from typing import List, Generator, Union
+from dataclasses import dataclass, field
 
 
-def make_token_mapping(tokenlist: TokenList):
+@dataclass
+class TokenEntry:
+    token: Token
+    head: Union[int, None]
+    children: List[int] = field(default_factory=list)
 
-    mapping = {0: {"Token": None, "Head": None, "Dependants": []}}
+    def has_children(self):
+        return len(self.children) > 0
 
-    # First pass: makes id2token map
-    for token in tokenlist:
-        mapping[token["id"]] = {}
-        mapping[token["id"]]["Token"] = token
-        mapping[token["id"]]["Head"] = None
-        mapping[token["id"]]["Dependants"] = []
+    def is_root(self):
+        return not isinstance(self.head, int)
 
-    # Second pass: maps heads and dependants
-    for token in tokenlist:
-        token_id = token["id"]
-        head_id = token["head"]
-        mapping[token_id]["Head"] = mapping[head_id]["Token"]
-        mapping[head_id]["Dependants"].append( mapping[token_id]["Token"] )
 
-    return mapping
+class TokenMapping(dict):
+    def get_token(self, id_):
+        return self[id_].token
+
+    def get_head_token(self, id_):
+        head_id = self[id_].head
+        return self.get_token(head_id)
+
+    def get_child_tokens(self, id_):
+        return [self.get_token(dep_id) for dep_id in self[id_].children]
+
+
+def make_tokens_mapping(sentence: TokenList) -> TokenMapping:
+
+    token_mapping = TokenMapping()
+    token_mapping.update({0: TokenEntry(Token(id=0, form="___root___"), None)})
+
+    for token in sentence:
+        if not isinstance(token["id"], int):
+            continue
+        token_mapping[token["id"]] = TokenEntry(token, token["head"])
+
+    for token in sentence:
+        token_mapping[token["head"]].children.append(token["id"])
+
+    return token_mapping
 
 
 def _token_fields_match(query: Query, token: Token):
+
     query_token_fields = query.token_fields_dict()
+
     for field, value in query_token_fields.items():
         if value is None:
             pass
@@ -33,6 +56,7 @@ def _token_fields_match(query: Query, token: Token):
             pass
         elif value != token[field]:
             return False
+
     return True
 
 
@@ -47,7 +71,7 @@ def _token_direction_match(query: Query, token: Token):
         return False
 
 
-def _query_match_dependants(mapping: dict, query: Query, dependants: List[Token]):
+def _query_match_dependants(mapping: TokenMapping, query: Query, dependants: List[Token]):
     lo, hi = query.n_required
     matched_tokens = []
 
@@ -66,8 +90,8 @@ def _query_match_dependants(mapping: dict, query: Query, dependants: List[Token]
     return matched_tokens
 
 
-def _token_dependants_match(mapping: dict, query: Query, token: Token):
-    dependant_tokens: List[Token] = mapping[token["id"]]["Dependants"]
+def _token_dependants_match(mapping: TokenMapping, query: Query, token: Token):
+    dependant_tokens: List[Token] = mapping.get_child_tokens(token["id"])
     dependant_queries: List[Query] = query.dependants
 
     if dependant_queries is None:
@@ -85,9 +109,9 @@ def _token_dependants_match(mapping: dict, query: Query, token: Token):
     return dependant_matches
 
 
-def _token_head_match(mapping: dict, query: Query, token: Token):
+def _token_head_match(mapping: TokenMapping, query: Query, token: Token):
 
-    head_token = mapping[token["id"]]["Head"]
+    head_token = mapping[token["id"]].head
     head_query = query.head
 
     if head_query is None:
@@ -103,7 +127,7 @@ def _token_head_match(mapping: dict, query: Query, token: Token):
         return False
 
 
-def _token_recursive_match(mapping: dict, query: Query, token: Token):
+def _token_recursive_match(mapping: TokenMapping, query: Query, token: Token):
 
     matching_tokens = []
 
@@ -147,10 +171,9 @@ def flatten_nested_list(nested_list) -> Generator:
             yield item
 
 
-def token_recursive_match(mapping: dict, query: Query, token: Token):
+def token_recursive_match(mapping: TokenMapping, query: Query, token: Token):
 
     """
-
     :param mapping: A mapping of the relations between tokens
     :param query: A query object
     :param token: A conllu token object
@@ -168,9 +191,10 @@ def token_recursive_match(mapping: dict, query: Query, token: Token):
 
     return output_tokens
 
+
 def sentence_recursive_match(query: Query, tokenlist: TokenList):
 
-    mapping = make_token_mapping(tokenlist)
+    mapping = make_tokens_mapping(tokenlist)
 
     output_tokens = []
 
