@@ -47,14 +47,22 @@ def parse_args():
         "--permutation_mode",
         type=str,
         choices=(
-            "random_projective",
-            "random_same_valency",
-            "random_same_side",
-            "optimal_projective",
-            "original_order",
-            "fixed_order",
+            "RandomProjective",
+            "RandomSameValency",
+            "RandomSameSide",
+            "OptimalOrder",
+            "OriginalOrder",
+            "FixedOrder",
         ),
         help="The type of permutation to perform",
+    )
+
+    required.add_argument(
+        "--analysis_modes",
+        type=str,
+        nargs="+",
+        choices=["DependencyLength", "IntervenerComplexity", "SemanticSimilarity", "WordFrequency", "WordZipfFrequency"],
+        help="Metrics with which to analyse tokens/sentences"
     )
 
     output = required.add_mutually_exclusive_group()
@@ -84,6 +92,12 @@ def parse_args():
         help="Masks any fields in a conllu that are not necessary; can save some space",
     )
 
+    optional.add_argument(
+        "--mask_words",
+        action="store_true",
+        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index.",
+    )
+
     repetitions = optional.add_mutually_exclusive_group()
 
     repetitions.add_argument(
@@ -104,27 +118,30 @@ def parse_args():
         default=1,
         help="Exclude sentences with less than a given minimum number of tokens",
     )
+
     optional.add_argument(
         "--max_len",
         type=int,
         default=999,
         help="Exclude sentences with more than a given maximum number of tokens",
     )
+
     optional.add_argument(
         "--count_root",
         action="store_true",
         help="Include the root node in the sentence analysis",
     )
+
     optional.add_argument(
-        "--count_direction",
-        action="store_true",
-        help="Count left and right branching dependencies separately",
+        "--language",
+        type=str,
+        help="Language (ISO639-1) for the WordFrequency analyzer",
     )
+
     optional.add_argument(
-        "--tokenwise_scores",
+        "--aggregate",
         action="store_true",
-        help="""Keep scores of all tokens in a separate field. This is a variable length list.
-        If --count_direction is enabled, then left scores will have a negative sign""",
+        help="If true, token scores will be aggregated and the results for each sentence will be output in an ndjson",
     )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -171,10 +188,10 @@ def main():
         )
         treebank_processor = treebank_permuter_analyzer_factory(
             args.permutation_mode,
+            args.analysis_modes,
             n_times=args.n_times,
             count_root=args.count_root,
-            count_direction=args.count_direction,
-            tokenwise_scores=args.tokenwise_scores,
+            aggregate=args.aggregate,
         )
 
     elif args.grammars:
@@ -189,10 +206,10 @@ def main():
 
         treebank_processor = treebank_permuter_analyzer_factory(
             args.permutation_mode,
+            args.analysis_modes,
             grammars=grammars,
             count_root=args.count_root,
-            count_direction=args.count_direction,
-            tokenwise_scores=args.tokenwise_scores,
+            aggregate=args.aggregate,
         )
 
     else:
@@ -202,7 +219,8 @@ def main():
         treebank_processor = treebank_permuter_analyzer_factory(args.permutation_mode)
 
     # Make file dumper
-    file_dumper = FileDumper(extension=".ndjson")
+    extension = ".ndjson" if args.aggregate else ".conllu"
+    file_dumper = FileDumper(extension=extension)
 
     # Make file processor
     file_processor = FileProcessor(loader, treebank_processor, file_dumper)

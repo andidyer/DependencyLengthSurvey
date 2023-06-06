@@ -55,12 +55,12 @@ def parse_args():
         "--permutation_mode",
         type=str,
         choices=(
-            "random_projective",
-            "random_same_valency",
-            "random_same_side",
-            "optimal_projective",
-            "original_order",
-            "fixed_order",
+            "RandomProjective",
+            "RandomSameValency",
+            "RandomSameSide",
+            "OptimalOrder",
+            "OriginalOrder",
+            "FixedOrder",
         ),
         help="The type of permutation to perform",
     )
@@ -112,12 +112,14 @@ def parse_args():
         default=1,
         help="Exclude sentences with less than a given minimum number of tokens",
     )
+
     optional.add_argument(
         "--max_len",
         type=int,
         default=999,
         help="Exclude sentences with more than a given maximum number of tokens",
     )
+
     optional.add_argument(
         "--mask_words",
         action="store_true",

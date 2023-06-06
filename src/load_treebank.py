@@ -61,6 +61,13 @@ class TreebankLoader:
                 if self.filter_with_length_limits(sentence):
                     yield sentence
 
+    def iter_load_glob(self, indir: Path, glob_pattern: str):
+        indir_path = Path(indir)
+        infiles = indir_path.glob(glob_pattern)
+
+        for infile in infiles:
+            yield from self.iter_load_treebank(infile)
+
     def filter_with_length_limits(self, sentence: TokenList):
         if self.min_len <= len(sentence) <= self.max_len:
             return True

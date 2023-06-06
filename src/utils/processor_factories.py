@@ -47,7 +47,7 @@ def sentence_permuter_factory(mode: str, grammar: Dict = None):
         return RandomSameValencyPermuter()
     elif mode == "RandomSameSide":
         return RandomSameSidePermuter()
-    elif mode == "OptimalProjective":
+    elif mode == "OptimalOrder":
         return OptimalProjectivePermuter()
     elif mode == "OriginalOrder":
         return SentencePermuter()
@@ -59,7 +59,7 @@ def sentence_permuter_factory(mode: str, grammar: Dict = None):
                                 - RandomProjective
                                 - RandomSameValency
                                 - RandomSameSide
-                                - OptimalProjective
+                                - OptimalOrder
                                 - OriginalOrder
                                 - FixedOrder"""
         )
