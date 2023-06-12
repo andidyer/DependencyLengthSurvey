@@ -61,8 +61,14 @@ def parse_args():
         "--analysis_modes",
         type=str,
         nargs="+",
-        choices=["DependencyLength", "IntervenerComplexity", "SemanticSimilarity", "WordFrequency", "WordZipfFrequency"],
-        help="Metrics with which to analyse tokens/sentences"
+        choices=[
+            "DependencyLength",
+            "IntervenerComplexity",
+            "SemanticSimilarity",
+            "WordFrequency",
+            "WordZipfFrequency",
+        ],
+        help="Metrics with which to analyse tokens/sentences",
     )
 
     output = required.add_mutually_exclusive_group()
@@ -181,7 +187,6 @@ def main():
         max_len=args.max_len,
     )
 
-
     if args.n_times:
         logging.info(
             f"Instantiating {args.n_times} processors of permuter type {args.permutation_mode}"
@@ -237,9 +242,7 @@ def main():
         file_processor.process_glob(args.directory, args.glob_pattern, args.outdir)
 
     else:
-        raise ValueError(
-            "Incorrect or incompatible use of input and output options."
-        )
+        raise ValueError("Incorrect or incompatible use of input and output options.")
 
 
 if __name__ == "__main__":

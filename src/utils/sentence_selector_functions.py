@@ -71,7 +71,9 @@ def _token_direction_match(query: Query, token: Token):
         return False
 
 
-def _query_match_dependants(mapping: TokenMapping, query: Query, dependants: List[Token]):
+def _query_match_dependants(
+    mapping: TokenMapping, query: Query, dependants: List[Token]
+):
     lo, hi = query.n_required
     matched_tokens = []
 

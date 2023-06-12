@@ -34,8 +34,14 @@ def parse_args():
         "--analysis_modes",
         type=str,
         nargs="+",
-        choices=["DependencyLength", "IntervenerComplexity", "SemanticSimilarity", "WordFrequency", "WordZipfFrequency"],
-        help="Metrics with which to analyse tokens/sentences"
+        choices=[
+            "DependencyLength",
+            "IntervenerComplexity",
+            "SemanticSimilarity",
+            "WordFrequency",
+            "WordZipfFrequency",
+        ],
+        help="Metrics with which to analyse tokens/sentences",
     )
 
     optional.add_argument(

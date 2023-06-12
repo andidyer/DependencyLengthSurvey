@@ -3,7 +3,6 @@ from src.utils.abstractclasses import SentenceMainProcessor
 
 
 class NullProcessor(SentenceMainProcessor):
-
     def process_sentence(self, sentence: TokenList, **kwargs):
         return sentence
 

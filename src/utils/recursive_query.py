@@ -11,7 +11,7 @@ class Query:
     xpos: str = None
     deprel: str = None
 
-    n_required: tuple = (1,1)
+    n_required: tuple = (1, 1)
     direction: int = 0
 
     head: Query = None
@@ -22,7 +22,11 @@ class Query:
     _isDependantQuery: bool = field(default=False, repr=False)
 
     def token_fields_dict(self):
-        return {field: value for (field, value) in asdict(self).items() if field in ("form", "lemma", "upos", "xpos", "deprel")}
+        return {
+            field: value
+            for (field, value) in asdict(self).items()
+            if field in ("form", "lemma", "upos", "xpos", "deprel")
+        }
 
     def isQueryRoot(self):
         return self._isQueryRoot
@@ -58,13 +62,19 @@ def parse_n_required(n_required: Union[str, int, List[int]]):
         return (0, 255)
     elif isinstance(n_required, int):
         return (n_required,) * 2
-    elif isinstance(n_required, list) and len(n_required) == 2 and all(isinstance(element, int) for element in n_required):
+    elif (
+        isinstance(n_required, list)
+        and len(n_required) == 2
+        and all(isinstance(element, int) for element in n_required)
+    ):
         return tuple(n_required)
     else:
-        raise ValueError("""
+        raise ValueError(
+            """
             n_required parameter must follow one of the following patterns:
             int, [int, int], '*', '+', '?'
-        """)
+        """
+        )
 
 
 def _parse_head_query(head_query: dict):

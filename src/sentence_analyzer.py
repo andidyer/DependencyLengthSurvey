@@ -8,24 +8,39 @@ import numpy as np
 
 
 class SentenceAnalyzer:
-
-    def __init__(self, token_analyzers: List[str] = None, w2v: dict = None, language: str = None, count_root: bool = False, aggregate=False):
-        self._init_token_analyzers(token_analyzers, w2v=w2v, language=language, count_root=count_root)
+    def __init__(
+        self,
+        token_analyzers: List[str] = None,
+        w2v: dict = None,
+        language: str = None,
+        count_root: bool = False,
+        aggregate=False,
+    ):
+        self._init_token_analyzers(
+            token_analyzers, w2v=w2v, language=language, count_root=count_root
+        )
         self.aggregate = aggregate
 
-    def _init_token_analyzers(self, analyzers: List[str], w2v: dict = None, language: str = None, count_root: bool = False):
+    def _init_token_analyzers(
+        self,
+        analyzers: List[str],
+        w2v: dict = None,
+        language: str = None,
+        count_root: bool = False,
+    ):
         self.token_analyzers = []
         if "DependencyLength" in analyzers:
             self.token_analyzers.append(DependencyLengthAnalyzer(count_root=count_root))
         if "IntervenerComplexity" in analyzers:
-            self.token_analyzers.append(IntervenerComplexityAnalyzer(count_root=count_root))
+            self.token_analyzers.append(
+                IntervenerComplexityAnalyzer(count_root=count_root)
+            )
         if "SemanticSimilarity" in analyzers:
             self.token_analyzers.append(SemanticSimilarityAnalyzer(w2v))
         if "WordFrequency" in analyzers:
             self.token_analyzers.append(WordFrequencyAnalyzer(language))
         if "WordZipfFrequency" in analyzers:
             self.token_analyzers.append(WordZipfFrequencyAnalyzer(language))
-
 
     @staticmethod
     def _iter_over_tokens(sentence: TokenList):
@@ -47,10 +62,15 @@ class SentenceAnalyzer:
         return sentence
 
     def _process_sentence_aggregate(self, sentence: TokenList):
-        analysis = {"ID": sentence.metadata["sent_id"],
-                    "Length": len(sentence.filter(id=lambda x: isinstance(x, int)))}
+        analysis = {
+            "ID": sentence.metadata["sent_id"],
+            "Length": len(sentence.filter(id=lambda x: isinstance(x, int))),
+        }
         for analyzer in self.token_analyzers:
-            key, value = (analyzer.name, analyzer.process_sentence(sentence, aggregate=True))
+            key, value = (
+                analyzer.name,
+                analyzer.process_sentence(sentence, aggregate=True),
+            )
             analysis.update({key: value})
 
         return analysis
@@ -63,7 +83,6 @@ class SentenceAnalyzer:
 
 
 class SentenceTokensAnalyzer:
-
     def _process_token(self, mapping: dict, token: Token):
         pass
 
@@ -92,7 +111,9 @@ class DependencyLengthAnalyzer(SentenceTokensAnalyzer):
                 continue
             yield self._process_token({}, token)
 
-    def process_sentence(self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False):
+    def process_sentence(
+        self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False
+    ):
         scores = list(self._process_tokens(tokenlist))
         if aggregate:
             return np.sum(np.abs(scores)).item()
@@ -115,9 +136,11 @@ class IntervenerComplexityAnalyzer(SentenceTokensAnalyzer):
         if id < head:
             lo, hi = id + 1, head
         else:
-            lo, hi = head, id -1
+            lo, hi = head, id - 1
 
-        sentence_heads = (item.token["id"] for key, item in mapping.items() if item.has_children())
+        sentence_heads = (
+            item.token["id"] for key, item in mapping.items() if item.has_children()
+        )
         n_intervening_heads = sum(1 for head in sentence_heads if lo <= head <= hi)
 
         return n_intervening_heads
@@ -132,7 +155,9 @@ class IntervenerComplexityAnalyzer(SentenceTokensAnalyzer):
 
             yield self._process_token(mapping, token)
 
-    def process_sentence(self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False):
+    def process_sentence(
+        self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False
+    ):
         scores = list(self._process_tokens(tokenlist))
         if not aggregate:
             return scores
@@ -166,7 +191,7 @@ class SemanticSimilarityAnalyzer(SentenceTokensAnalyzer):
         for token in tokenlist:
             if not isinstance(token["id"], int):
                 continue
-            elif token['head'] == 0:
+            elif token["head"] == 0:
                 yield np.NaN
                 continue
             else:
@@ -175,7 +200,9 @@ class SemanticSimilarityAnalyzer(SentenceTokensAnalyzer):
 
                 yield self.word_cosine(token_form, head_form)
 
-    def process_sentence(self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False):
+    def process_sentence(
+        self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False
+    ):
         scores = list(self._process_tokens(tokenlist))
         if aggregate:
             return np.nanmean(scores).item()
@@ -205,7 +232,9 @@ class WordFrequencyAnalyzer(SentenceTokensAnalyzer):
             else:
                 yield self.word_frequency(token["form"])
 
-    def process_sentence(self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False):
+    def process_sentence(
+        self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False
+    ):
         scores = list(self._process_tokens(tokenlist))
         if aggregate:
             return np.mean(scores)

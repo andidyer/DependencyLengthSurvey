@@ -35,7 +35,9 @@ def load_word2vec(w2vfile: Path):
 
             if len(vec) != dims:
                 # This indicates a badly formatted line
-                logging.warning(f"Bad line {i+1} in {w2vfile}. {len(vec)} != {dims} Skipping this line")
+                logging.warning(
+                    f"Bad line {i+1} in {w2vfile}. {len(vec)} != {dims} Skipping this line"
+                )
                 continue
 
             vec = list(map(float), vec)

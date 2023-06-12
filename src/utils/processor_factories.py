@@ -84,14 +84,15 @@ def treebank_permuter_analyzer_factory(
     token_analyzers: List,
     grammars: List[Dict] = None,
     n_times=1,
-    count_root: bool =False,
+    count_root: bool = False,
     w2v: dict = None,
     language: str = None,
     aggregate: bool = False,
 ):
     if isinstance(grammars, list) and permutation_mode == "FixedOrder":
         sentence_permuters = list(
-            sentence_permuter_factory(permutation_mode, grammar=grammar) for grammar in grammars
+            sentence_permuter_factory(permutation_mode, grammar=grammar)
+            for grammar in grammars
         )
     elif permutation_mode.startswith("Random"):
         sentence_permuters = list(
@@ -105,7 +106,7 @@ def treebank_permuter_analyzer_factory(
         count_root=count_root,
         w2v=w2v,
         language=language,
-        aggregate=aggregate
+        aggregate=aggregate,
     )
 
     return TreebankPermuterAnalyzer(sentence_permuters, sentence_analyzer)

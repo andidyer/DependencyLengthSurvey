@@ -6,7 +6,11 @@ from conllu.models import Token, TokenList, SentenceList
 from src.sentence_cleaner import SentenceCleaner
 from src.sentence_selector import SentenceSelector
 
-from src.utils.decorators import fix_token_indices, preserve_metadata, deepcopy_tokenlist
+from src.utils.decorators import (
+    fix_token_indices,
+    preserve_metadata,
+    deepcopy_tokenlist,
+)
 
 
 class TreebankLoader:

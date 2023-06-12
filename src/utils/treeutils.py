@@ -48,6 +48,7 @@ def make_index_mapping(tokenlist: TokenList) -> dict:
             i += 1
     return index_mapping
 
+
 def standardize_deprels(sentence: TokenList):
     new_sentence = sentence.copy()
 

@@ -75,10 +75,7 @@ def parse_args():
     )
 
     optional.add_argument(
-        "--query",
-        type=Path,
-        default=None,
-        help="json format token query"
+        "--query", type=Path, default=None, help="json format token query"
     )
 
     optional.add_argument(
