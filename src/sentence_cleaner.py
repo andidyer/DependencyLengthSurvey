@@ -3,7 +3,13 @@ from typing import List, Dict, Tuple, AnyStr
 from conllu.models import TokenList
 
 from src.utils.abstractclasses import SentencePreProcessor
-from src.utils.treeutils import fix_token_indices, standardize_deprels
+from src.utils.treeutils import standardize_deprels
+
+from src.utils.decorators import (
+    deepcopy_tokenlist,
+    preserve_metadata,
+    fix_token_indices,
+)
 
 
 class SentenceCleaner(SentencePreProcessor):
@@ -21,15 +27,12 @@ class SentenceCleaner(SentencePreProcessor):
         )
         self.mask_words = mask_words
 
-    def __call__(self, sentence: TokenList):
-        return self.process_sentence(sentence)
-
+    @deepcopy_tokenlist
     def process_sentence(self, sentence: TokenList, **kwargs):
         sentence = self.remove_nonstandard_tokens(sentence)
         if self.mask_words:
             sentence = self.mask_token_lexicon(sentence)
         sentence = self.remove_tokens(sentence)
-        sentence = fix_token_indices(sentence)
         sentence = standardize_deprels(sentence)
         sentence = self.empty_fields(sentence)
         return sentence
@@ -57,9 +60,9 @@ class SentenceCleaner(SentencePreProcessor):
             stack = new_ids  # Terminate when there are no new ids
             queue = list((di, hi) for (di, hi) in queue if di not in stack)
 
-        tokenlist = filter_preserve_metadata(
-            tokenlist, id=lambda x: x not in remove_ids
-        )
+        remove_ids = list(remove_ids)
+
+        tokenlist = self.remove_tokens_by_id(tokenlist, remove_ids)
 
         return tokenlist
 
@@ -81,24 +84,21 @@ class SentenceCleaner(SentencePreProcessor):
         Removes any non-standard tokens, such as multi-word tokens or
         enhanced dependencies, from the sentence.
         """
-        return filter_preserve_metadata(tokenlist, id=lambda x: isinstance(x, int))
+        return tokenlist.filter(id=lambda x: isinstance(x, int))
+
+    @staticmethod
+    def remove_tokens_by_id(tokenlist: TokenList, ids: List[int]):
+        return tokenlist.filter(id=lambda x: x not in ids)
 
     def mask_token_lexicon(self, tokenlist: TokenList):
         """Removes lexical information of the sentence. Replaces metadata text with ***MASKED***, and
         token form and lemma with [sent_id]+[token_id], e.g. 4-1, 4-2, ..., 4-n"""
-        new_tokenlist = tokenlist.copy()
-        sent_id = new_tokenlist.metadata["sent_id"]
-        new_tokenlist.metadata["text"] = "*MASKED*"
-        for i, token in enumerate(new_tokenlist):
+        sent_id = tokenlist.metadata["sent_id"]
+        tokenlist.metadata["text"] = "*MASKED*"
+        for i, token in enumerate(tokenlist):
             token_id = token["id"]
             replace_value = f"f{sent_id}-{token_id}"
-            new_tokenlist[i]["form"] = replace_value
-            new_tokenlist[i]["lemma"] = replace_value
+            tokenlist[i]["form"] = replace_value
+            tokenlist[i]["lemma"] = replace_value
 
-        return new_tokenlist
-
-
-def filter_preserve_metadata(tokenlist: TokenList, **kwargs):
-    sentence = tokenlist.filter(**kwargs)
-    sentence.metadata = tokenlist.metadata
-    return sentence
+        return tokenlist

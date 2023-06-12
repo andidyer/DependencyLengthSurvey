@@ -1,14 +1,29 @@
 import argparse
+import json
 import random
 from pathlib import Path
 import logging
 
 from src.file_processor import FileProcessor
 from src.sentence_cleaner import SentenceCleaner
-from src.load_treebank import TreebankLoader
 from src.file_dumper import FileDumper
+from src.load_treebank import TreebankLoader
+from src.sentence_selector import SentenceSelector
+from src.sentence_permuter import (
+    RandomProjectivePermuter,
+    RandomSameValencyPermuter,
+    RandomSameSidePermuter,
+    FixedOrderPermuter,
+    OptimalProjectivePermuter,
+    SentencePermuter,
+)
+from src.treebank_processor import TreebankPermuter
 from src.utils.fileutils import load_ndjson
-from src.utils.processor_factories import treebank_analyzer_factory
+from src.utils.processor_factories import (
+    sentence_permuter_factory,
+    treebank_permuter_factory,
+)
+from src.utils.miscutils import NullProcessor
 
 
 def parse_args():
@@ -18,7 +33,6 @@ def parse_args():
     optional = parser.add_argument_group("optional arguments")
 
     treebank_source = required.add_mutually_exclusive_group()
-    analysis_mode = required.add_mutually_exclusive_group()
 
     treebank_source.add_argument(
         "--treebank", type=Path, help="Treebank to load and permute"
@@ -28,20 +42,6 @@ def parse_args():
         "--directory",
         type=Path,
         help="Directory from which to find treebanks by globbing",
-    )
-
-    analysis_mode.add_argument(
-        "--analysis_modes",
-        type=str,
-        nargs="+",
-        choices=[
-            "DependencyLength",
-            "IntervenerComplexity",
-            "SemanticSimilarity",
-            "WordFrequency",
-            "WordZipfFrequency",
-        ],
-        help="Metrics with which to analyse tokens/sentences",
     )
 
     optional.add_argument(
@@ -75,17 +75,15 @@ def parse_args():
     )
 
     optional.add_argument(
+        "--query", type=Path, default=None, help="json format token query"
+    )
+
+    optional.add_argument(
         "--fields_to_remove",
         type=str,
         nargs="*",
         choices=["form", "lemma", "upos", "xpos", "feats", "deps", "misc"],
         help="Masks any fields in a conllu that are not necessary; can save some space",
-    )
-
-    optional.add_argument(
-        "--mask_words",
-        action="store_true",
-        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index.",
     )
 
     optional.add_argument(
@@ -103,21 +101,9 @@ def parse_args():
     )
 
     optional.add_argument(
-        "--count_root",
+        "--mask_words",
         action="store_true",
-        help="Include the root node in the sentence analysis",
-    )
-
-    optional.add_argument(
-        "--language",
-        type=str,
-        help="Language (ISO639-1) for the WordFrequency analyzer",
-    )
-
-    optional.add_argument(
-        "--aggregate",
-        action="store_true",
-        help="If true, token scores will be aggregated and the results for each sentence will be output in an ndjson",
+        help="Mask all words in the treebank. Token forms and lemma will be represented only by original token index.",
     )
 
     optional.add_argument("--verbose", action="store_true", help="Verbosity")
@@ -133,6 +119,13 @@ def main():
     # Set random seed
     random.seed(args.random_seed)
 
+    # Set logging level to info if verbose
+    if args.verbose:
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=level)
+
     # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
         remove_config = load_ndjson(args.remove_config)
@@ -142,31 +135,27 @@ def main():
     # Make cleaner
     cleaner = SentenceCleaner(remove_config, args.fields_to_remove, args.mask_words)
 
+    # Make sentence selector
+    if args.query:
+        with open(args.query, encoding="utf-8") as fin:
+            query = json.load(fin)
+    else:
+        query = None
+    selector = SentenceSelector(query)
+
     # Make loader
     loader = TreebankLoader(
         cleaner=cleaner,
+        selector=selector,
         min_len=args.min_len,
         max_len=args.max_len,
     )
 
-    # Make treebank analyzer
-
-    analyzer = treebank_analyzer_factory(
-        args.analysis_modes,
-        count_root=args.count_root,
-        aggregate=args.aggregate,
-        language=args.language,
-    )
-
     # Make file dumper
-    if args.aggregate:
-        file_format = ".ndjson"
-    else:
-        file_format = ".conllu"
-    dumper = FileDumper(extension=file_format)
+    file_dumper = FileDumper(extension=".conllu")
 
     # Make file processor
-    file_processor = FileProcessor(loader, analyzer, dumper)
+    file_processor = FileProcessor(loader, NullProcessor(), file_dumper)
 
     # Handle input and output
     if args.treebank and args.outfile:

@@ -8,57 +8,69 @@ from src.treebank_processor import (
 
 
 def sentence_analyzer_factory(
-    count_root=False, count_direction=False, tokenwise_scores=False
+    token_analyzers: List[str],
+    count_root: bool = False,
+    w2v: dict = None,
+    language: str = None,
+    aggregate: bool = False,
 ):
     return SentenceAnalyzer(
+        token_analyzers,
         count_root=count_root,
-        count_direction=count_direction,
-        tokenwise_scores=tokenwise_scores,
+        w2v=w2v,
+        language=language,
+        aggregate=aggregate,
     )
 
 
 def treebank_analyzer_factory(
-    count_root=False, count_direction=False, tokenwise_scores=False
+    token_analyzers: List[str],
+    count_root: bool = False,
+    w2v: dict = None,
+    language: str = None,
+    aggregate: bool = False,
 ):
     sentence_analyzer = sentence_analyzer_factory(
+        token_analyzers,
         count_root=count_root,
-        count_direction=count_direction,
-        tokenwise_scores=tokenwise_scores,
+        w2v=w2v,
+        language=language,
+        aggregate=aggregate,
     )
     return TreebankAnalyzer(sentence_analyzer)
 
 
 def sentence_permuter_factory(mode: str, grammar: Dict = None):
-    if mode == "random_projective":
+    if mode == "RandomProjective":
         return RandomProjectivePermuter()
-    elif mode == "random_same_valency":
+    elif mode == "RandomSameValency":
         return RandomSameValencyPermuter()
-    elif mode == "random_same_side":
+    elif mode == "RandomSameSide":
         return RandomSameSidePermuter()
-    elif mode == "optimal_projective":
+    elif mode == "OptimalOrder":
         return OptimalProjectivePermuter()
-    elif mode == "original_order":
+    elif mode == "OriginalOrder":
         return SentencePermuter()
-    elif mode == "fixed_order":
+    elif mode == "FixedOrder":
         return FixedOrderPermuter(grammar)
     else:
         raise ValueError(
             f"""Invalid permutation mode {mode} Choose from:
-                                - random_projective
-                                - random_same_valency
-                                - random_same_side
-                                - optimal_projective
-                                - original_order
-                                - fixed_order"""
+                                - RandomProjective
+                                - RandomSameValency
+                                - RandomSameSide
+                                - OptimalOrder
+                                - OriginalOrder
+                                - FixedOrder"""
         )
 
 
 def treebank_permuter_factory(mode: str, grammars: List[Dict] = None, n_times=1):
-    if isinstance(grammars, list) and mode == "fixed_order":
+    if isinstance(grammars, list) and mode == "FixedOrder":
         sentence_permuters = list(
             sentence_permuter_factory(mode, grammar=grammar) for grammar in grammars
         )
-    elif mode.startswith("random"):
+    elif mode.startswith("Random"):
         sentence_permuters = list(
             sentence_permuter_factory(mode) for _ in range(n_times)
         )
@@ -68,28 +80,33 @@ def treebank_permuter_factory(mode: str, grammars: List[Dict] = None, n_times=1)
 
 
 def treebank_permuter_analyzer_factory(
-    mode: str,
+    permutation_mode: str,
+    token_analyzers: List,
     grammars: List[Dict] = None,
     n_times=1,
-    count_root=False,
-    count_direction=False,
-    tokenwise_scores=False,
+    count_root: bool = False,
+    w2v: dict = None,
+    language: str = None,
+    aggregate: bool = False,
 ):
-    if isinstance(grammars, list) and mode == "fixed_order":
+    if isinstance(grammars, list) and permutation_mode == "FixedOrder":
         sentence_permuters = list(
-            sentence_permuter_factory(mode, grammar=grammar) for grammar in grammars
+            sentence_permuter_factory(permutation_mode, grammar=grammar)
+            for grammar in grammars
         )
-    elif mode.startswith("random"):
+    elif permutation_mode.startswith("Random"):
         sentence_permuters = list(
-            sentence_permuter_factory(mode) for i in range(n_times)
+            sentence_permuter_factory(permutation_mode) for i in range(n_times)
         )
     else:
-        sentence_permuters = [sentence_permuter_factory(mode)]
+        sentence_permuters = [sentence_permuter_factory(permutation_mode)]
 
     sentence_analyzer = sentence_analyzer_factory(
+        token_analyzers,
         count_root=count_root,
-        count_direction=count_direction,
-        tokenwise_scores=tokenwise_scores,
+        w2v=w2v,
+        language=language,
+        aggregate=aggregate,
     )
 
     return TreebankPermuterAnalyzer(sentence_permuters, sentence_analyzer)

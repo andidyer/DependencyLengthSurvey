@@ -4,6 +4,13 @@ import conllu
 from conllu.models import Token, TokenList, SentenceList
 
 from src.sentence_cleaner import SentenceCleaner
+from src.sentence_selector import SentenceSelector
+
+from src.utils.decorators import (
+    fix_token_indices,
+    preserve_metadata,
+    deepcopy_tokenlist,
+)
 
 
 class TreebankLoader:
@@ -11,15 +18,22 @@ class TreebankLoader:
 
     def __init__(
         self,
-        remove_config: List[Dict] = None,
-        fields_to_remove: List[AnyStr] = None,
+        cleaner: SentenceCleaner = None,
+        selector: SentenceSelector = None,
         min_len: int = 1,
         max_len: int = 999,
-        mask_words: bool = False,
     ):
-        self.cleaner = SentenceCleaner(
-            remove_config, fields_to_remove, mask_words=mask_words
-        )
+
+        if cleaner is None:
+            self.cleaner = SentenceCleaner()
+        else:
+            self.cleaner = cleaner
+
+        if selector is None:
+            self.selector = SentenceSelector()
+        else:
+            self.selector = selector
+
         self.min_len = min_len
         self.max_len = max_len
 
@@ -27,26 +41,38 @@ class TreebankLoader:
         sentences = self.iter_load_treebank(infile)
         return SentenceList(sentences)
 
+    def clean_sentence(self, tokenlist: TokenList):
+        return self.cleaner.process_sentence(tokenlist)
+
+    def select_tokens(self, tokenlist: TokenList):
+        return self.selector.process_sentence(tokenlist)
+
+    @deepcopy_tokenlist
+    @preserve_metadata
+    @fix_token_indices
+    def process_sentence(self, tokenlist: TokenList):
+        processed = tokenlist
+        processed = self.clean_sentence(processed)
+        processed = self.select_tokens(processed)
+        return processed
+
     def iter_load_treebank(self, infile: Path):
         with open(infile, encoding="utf-8") as fin:
             sentence_generator = conllu.parse_incr(fin)
             for sentence in sentence_generator:
-                sentence = self.cleaner(sentence)
-                if (
-                    self._filter_with_sanity_checks(sentence)
-                    and self.min_len <= len(sentence) <= self.max_len
-                ):
+                sentence = self.process_sentence(sentence)
+
+                if self.filter_with_length_limits(sentence):
                     yield sentence
 
-    def _filter_with_sanity_checks(self, sentence: TokenList):
-        checks = [
-            SanityChecks.sentence_has_single_root(sentence),
-            SanityChecks.sentence_has_no_orphans(sentence),
-        ]
-        if all(checks):
-            return True
+    def iter_load_glob(self, indir: Path, glob_pattern: str):
+        indir_path = Path(indir)
+        infiles = indir_path.glob(glob_pattern)
 
-    def _filter_with_length_limits(self, sentence: TokenList):
+        for infile in infiles:
+            yield from self.iter_load_treebank(infile)
+
+    def filter_with_length_limits(self, sentence: TokenList):
         if self.min_len <= len(sentence) <= self.max_len:
             return True
         else:

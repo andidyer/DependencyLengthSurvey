@@ -4,6 +4,7 @@ from pathlib import Path
 import logging
 
 from src.file_processor import FileProcessor
+from src.sentence_cleaner import SentenceCleaner
 from src.file_dumper import FileDumper
 from src.load_treebank import TreebankLoader
 from src.sentence_permuter import (
@@ -54,12 +55,12 @@ def parse_args():
         "--permutation_mode",
         type=str,
         choices=(
-            "random_projective",
-            "random_same_valency",
-            "random_same_side",
-            "optimal_projective",
-            "original_order",
-            "fixed_order",
+            "RandomProjective",
+            "RandomSameValency",
+            "RandomSameSide",
+            "OptimalOrder",
+            "OriginalOrder",
+            "FixedOrder",
         ),
         help="The type of permutation to perform",
     )
@@ -111,12 +112,14 @@ def parse_args():
         default=1,
         help="Exclude sentences with less than a given minimum number of tokens",
     )
+
     optional.add_argument(
         "--max_len",
         type=int,
         default=999,
         help="Exclude sentences with more than a given maximum number of tokens",
     )
+
     optional.add_argument(
         "--mask_words",
         action="store_true",
@@ -149,13 +152,14 @@ def main():
     else:
         remove_config = None
 
-    # Make loader with cleaner
+    # Make cleaner
+    cleaner = SentenceCleaner(remove_config, args.fields_to_remove, args.mask_words)
+
+    # Make loader
     loader = TreebankLoader(
-        remove_config=remove_config,
-        fields_to_remove=args.fields_to_remove,
+        cleaner=cleaner,
         min_len=args.min_len,
         max_len=args.max_len,
-        mask_words=args.mask_words,
     )
 
     if args.n_times:
