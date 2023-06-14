@@ -5,7 +5,7 @@ from itertools import cycle
 from abc import ABC, abstractmethod
 import logging
 
-from conllu.models import Token, TokenList, TokenTree, SentenceList
+from conllu.models import Token, TokenList, TokenTree
 
 from src.utils.treeutils import get_tree_weight, Node
 from src.utils.decorators import (
