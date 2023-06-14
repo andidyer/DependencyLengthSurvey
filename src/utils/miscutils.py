@@ -1,4 +1,4 @@
-from conllu.models import Token, TokenList, TokenTree, SentenceList
+from conllu.models import Token, TokenList, TokenTree
 from src.utils.abstractclasses import SentenceMainProcessor
 
 
@@ -6,6 +6,6 @@ class NullProcessor(SentenceMainProcessor):
     def process_sentence(self, sentence: TokenList, **kwargs):
         return sentence
 
-    def process_treebank(self, treebank: SentenceList, **kwargs):
+    def process_treebank(self, treebank: list, **kwargs):
         for sentence in treebank:
             yield sentence
