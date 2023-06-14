@@ -6,7 +6,7 @@ import statistics
 from typing import List, Callable, Iterable, Union
 
 from dataclasses import dataclass
-from conllu import TokenList
+from conllu.models import TokenList
 
 from src.sentence_analyzer import SentenceAnalyzer
 from src.sentence_permuter import FixedOrderPermuter, OptimalProjectivePermuter

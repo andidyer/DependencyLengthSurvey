@@ -1,11 +1,8 @@
 import random
 from typing import Callable, List, Dict
 from collections import defaultdict
-from itertools import cycle
-from abc import ABC, abstractmethod
-import logging
 
-from conllu.models import Token, TokenList, TokenTree
+from conllu.models import TokenList, TokenTree
 
 from src.utils.treeutils import get_tree_weight, Node
 from src.utils.decorators import (

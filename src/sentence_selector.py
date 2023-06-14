@@ -1,6 +1,6 @@
 from typing import List, Dict, SupportsInt, AnyStr, Union
 
-from conllu import Token, TokenList
+from conllu.models import Token, TokenList
 
 from src.utils.decorators import (
     fix_token_indices,
