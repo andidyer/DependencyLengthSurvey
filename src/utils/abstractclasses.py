@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from conllu import TokenList
+from conllu.models import TokenList
 
 
 class SentenceProcessor(ABC):
