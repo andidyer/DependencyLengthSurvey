@@ -1,4 +1,4 @@
-from conllu.models import Token, TokenList, TokenTree
+from conllu import TokenList
 from src.utils.abstractclasses import SentenceMainProcessor
 
 

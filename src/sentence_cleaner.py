@@ -1,6 +1,6 @@
 from typing import List, Dict, Tuple, AnyStr
 
-from conllu.models import TokenList
+from conllu import TokenList
 
 from src.utils.abstractclasses import SentencePreProcessor
 from src.utils.treeutils import standardize_deprels

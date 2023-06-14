@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import List, Dict, AnyStr
-import conllu
-from conllu.models import Token, TokenList, SentenceList
+from conllu import parse_incr, Token, TokenList, SentenceList
 
 from src.sentence_cleaner import SentenceCleaner
 from src.sentence_selector import SentenceSelector
@@ -58,7 +57,7 @@ class TreebankLoader:
 
     def iter_load_treebank(self, infile: Path):
         with open(infile, encoding="utf-8") as fin:
-            sentence_generator = conllu.parse_incr(fin)
+            sentence_generator = parse_incr(fin)
             for sentence in sentence_generator:
                 sentence = self.process_sentence(sentence)
 

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Union, Dict
 import numpy as np
 
-from conllu.models import TokenList
+from conllu import TokenList
 import logging
 
 

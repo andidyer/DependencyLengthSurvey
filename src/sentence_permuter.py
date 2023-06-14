@@ -2,7 +2,7 @@ import random
 from typing import Callable, List, Dict
 from collections import defaultdict
 
-from conllu.models import TokenList, TokenTree
+from conllu import TokenList, TokenTree
 
 from src.utils.treeutils import get_tree_weight, Node
 from src.utils.decorators import (

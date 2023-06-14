@@ -3,7 +3,7 @@ from typing import List, Union, Iterator
 from dataclasses import dataclass, field
 
 import wordfreq
-from conllu.models import Token, TokenList
+from conllu import Token, TokenList
 import numpy as np
 
 
