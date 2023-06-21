@@ -8,8 +8,6 @@ from dataclasses import asdict
 from pathlib import Path
 import argparse
 
-# Set logging config
-logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.DEBUG)
 
 parser = argparse.ArgumentParser()
 
