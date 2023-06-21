@@ -64,8 +64,16 @@ parser.add_argument(
     default=1,
     help="Number of grammars to train",
 )
+parser.add_argument("--verbose", action="store_true")
 
 args = parser.parse_args()
+
+# Set logging level to info if verbose
+if args.verbose:
+    level = logging.INFO
+else:
+    level = logging.WARNING
+logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=level)
 
 BURNIN = args.burnin
 EPOCHS = args.epochs
