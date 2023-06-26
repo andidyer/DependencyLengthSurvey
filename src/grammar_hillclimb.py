@@ -3,6 +3,7 @@ import random
 import copy
 import logging
 import statistics
+import math
 from typing import List, Callable, Iterable, Union
 
 from dataclasses import dataclass
@@ -242,14 +243,20 @@ class GrammarHillclimb:
         burnin=50,
     ):
 
+        burnin_sqrt = math.sqrt(burnin)
+        epochs_sqrt = math.sqrt(epochs)
+
         logging.info(f"Beginning burn-in process: ({burnin} epochs)")
         for i in range(burnin):
             # Do not store or yield these
+            if i % burnin_sqrt == 0:
+                logging.info(f"Burnin epoch {i}")
             self._train_grammar_step(train_sentences)
 
         logging.info(f"Beginning generation: ({epochs} epochs)")
         for i in range(epochs):
-            logging.info(f"Training epoch {i}")
+            if i % epochs_sqrt == 0:
+                logging.info(f"Train epoch {i}")
             # Yield training steps
             yield self._train_grammar_step(train_sentences, epoch=i)
 
