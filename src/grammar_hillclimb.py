@@ -43,16 +43,22 @@ class DLMAnalyzer(Analyzer):
 
         self.scores = self.ScoreContainer()
 
+        self._sentence_optimal_cache = {}
+
     def ingest_sentence(self, sentence: TokenList):
 
         grammar_permutation = self.grammar_permuter.process_sentence(sentence)
-        optimal_permutation = self.optimal_permuter.process_sentence(sentence)
+        grammar_analysis = self.analyzer.process_sentence(grammar_permutation)["DL"]
 
-        grammar_analysis = self.analyzer.process_sentence(grammar_permutation)
-        optimal_analysis = self.analyzer.process_sentence(optimal_permutation)
+        if sentence.metadata["sent_id"] in self._sentence_optimal_cache:
+            optimal_analysis = self._sentence_optimal_cache["sent_id"]
+        else:
+            optimal_permutation = self.optimal_permuter.process_sentence(sentence)
+            optimal_analysis = self.analyzer.process_sentence(optimal_permutation)["DL"]
+            self._sentence_optimal_cache["sent_id"] = optimal_analysis
 
-        self.scores.optimal_DL += optimal_analysis["DL"]
-        self.scores.grammar_DL += grammar_analysis["DL"]
+        self.scores.optimal_DL += optimal_analysis
+        self.scores.grammar_DL += grammar_analysis
 
     def getScore(self):
         try:
