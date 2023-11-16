@@ -1,4 +1,4 @@
-from src.grammar_hillclimb import GrammarHillclimb
+from src.grammar_hillclimb import GrammarHillclimb, DLAnalyzer, IntervenerComplexityAnalyzer
 from src.sentence_cleaner import SentenceCleaner
 from src.load_treebank import TreebankLoader
 
@@ -57,25 +57,23 @@ parser.add_argument(
     help="Number of epochs to burn-in (i.e. train without output)",
 )
 parser.add_argument(
-    "--swarmsize",
-    type=int,
-    default=1,
-    help="Number of grammars to train",
+    "--callable_loading",
+    action="store_true",
+    help="Load the treebanks afresh on each epoch as a callable function. Recommended only for reading very large data"
 )
-parser.add_argument("--verbose", action="store_true")
+parser.add_argument(
+        "--log_level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Set the logging level (default: INFO)",
+    )
 
 args = parser.parse_args()
 
-# Set logging level to info if verbose
-if args.verbose:
-    level = logging.INFO
-else:
-    level = logging.WARNING
-logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=level)
+logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=args.log_level)
 
 BURNIN = args.burnin
 EPOCHS = args.epochs
-SWARMSIZE = args.swarmsize
 
 # Get list of deprels
 with open(args.deprels, encoding="utf-8") as fin:
@@ -89,12 +87,21 @@ cleaner = SentenceCleaner(remove_config=[{"deprel": "punct"}])
 logging.info("Making sentence loader")
 loader = TreebankLoader(cleaner=cleaner)
 
-logging.info("Loading sentences as callables")
-train_sentences = lambda: loader.iter_load_glob(args.train_directory, args.train_glob)
-dev_sentences = lambda: loader.iter_load_glob(args.dev_directory, args.dev_glob)
+logging.info("Loading sentences")
+if args.callable_loading:
+    train_sentences = lambda: loader.iter_load_glob(args.train_directory, args.train_glob)
+    dev_sentences = lambda: loader.iter_load_glob(args.dev_directory, args.dev_glob)
+
+else:
+    train_sentences = list(loader.iter_load_glob(args.train_directory, args.train_glob))
+    dev_sentences = list(loader.iter_load_glob(args.dev_directory, args.dev_glob))
+
+logging.info("Making analyzers")
+dl_analyzer = DLAnalyzer()
+icm_analyzer = IntervenerComplexityAnalyzer()
 
 logging.info("Instantiating grammar hillclimb")
-mcmc = GrammarHillclimb(deprels=DEPRELS, swarmsize=SWARMSIZE)
+mcmc = GrammarHillclimb(deprels=DEPRELS, analyzers=[dl_analyzer, icm_analyzer])
 
 logging.info("Beginning grammar generation")
 grammars_generator = mcmc.train_grammars(
@@ -107,8 +114,7 @@ grammars_generator = mcmc.train_grammars(
 fout = open(args.output_file, "w", encoding="utf-8")
 
 for itemi in grammars_generator:
-    for i, itemj in enumerate(itemi):
-        json_itemj = asdict(itemj)
-        print(json.dumps(json_itemj), file=fout)
+    json_itemi = asdict(itemi)
+    print(json.dumps(json_itemi), file=fout)
 
 fout.close()
