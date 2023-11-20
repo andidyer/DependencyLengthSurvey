@@ -100,8 +100,11 @@ logging.info("Making analyzers")
 dl_analyzer = DLAnalyzer()
 icm_analyzer = IntervenerComplexityAnalyzer()
 
+logging.info("Making analyzer weights")
+weights = [1,0]
+
 logging.info("Instantiating grammar hillclimb")
-mcmc = GrammarHillclimb(deprels=DEPRELS, analyzers=[dl_analyzer, icm_analyzer])
+mcmc = GrammarHillclimb(deprels=DEPRELS, analyzers=[dl_analyzer, icm_analyzer], weights=weights)
 
 logging.info("Beginning grammar generation")
 grammars_generator = mcmc.train_grammars(

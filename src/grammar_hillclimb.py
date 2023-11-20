@@ -3,13 +3,14 @@ import random
 import copy
 import logging
 import statistics
-from typing import List, Callable, Iterable, Union, Dict
+import numpy as np
+from typing import List, Callable, Iterable, Union, Dict, SupportsAbs
 
 from dataclasses import dataclass,field
 from conllu import TokenList
 
 from src.sentence_analyzer import SentenceAnalyzer
-from src.sentence_permuter import FixedOrderPermuter, OptimalProjectivePermuter
+from src.sentence_permuter import FixedOrderPermuter
 
 
 class Analyzer:
@@ -17,22 +18,34 @@ class Analyzer:
     metric = "NULL"
 
     def __init__(self):
-        self.previous_score = None
-        self.current_score = 0
+        self.previous_rawscore = None
+        self.previous_wordcount = None
+
+        self.current_rawscore = 0
+        self.current_wordcount = 0
 
     def ingest_sentence(self, sentence: TokenList):
         pass
 
     def update_previous_score(self):
-        self.previous_score = self.current_score
+        self.previous_rawscore = self.current_rawscore
+        self.previous_wordcount = self.current_wordcount
+
+    def get_previous_score(self):
+        return self.previous_rawscore / self.previous_wordcount
+
+    def get_current_score(self):
+        return self.current_rawscore / self.current_wordcount
 
     def get_improvement_score(self):
-        if self.previous_score is None:
-            self.previous_score = self.current_score
-        return self.current_score / self.previous_score
+        if self.previous_rawscore is None:
+            self.previous_rawscore = self.current_rawscore
+            self.previous_wordcount = self.current_wordcount
+        return self.get_current_score() / self.get_previous_score()
 
     def flush(self):
-        self.current_score = 0
+        self.current_wordcount = 0
+        self.current_rawscore = 0
 
 
 class MemorySurprisalAnalyzer(Analyzer):
@@ -49,10 +62,15 @@ class IntervenerComplexityAnalyzer(Analyzer):
         self.analyzer = SentenceAnalyzer(["IntervenerComplexity"], aggregate=True)
 
     def analyze_sentence(self, sentence: TokenList):
-        return self.analyzer.process_sentence(sentence)["ICM"]
+        response = self.analyzer.process_sentence(sentence)
+        length = response["Length"]
+        metric = response["ICM"]
+        return metric, length
 
     def ingest_sentence(self, sentence: TokenList):
-        self.current_score += self.analyze_sentence(sentence)
+        metric, length = self.analyze_sentence(sentence)
+        self.current_rawscore += metric
+        self.current_wordcount += length
 
 
 class DLAnalyzer(Analyzer):
@@ -64,10 +82,15 @@ class DLAnalyzer(Analyzer):
         self.analyzer = SentenceAnalyzer(["DependencyLength"], aggregate=True)
 
     def analyze_sentence(self, sentence: TokenList):
-        return self.analyzer.process_sentence(sentence)["DL"]
+        response = self.analyzer.process_sentence(sentence)
+        length = response["Length"]
+        metric = response["DL"]
+        return metric, length
 
     def ingest_sentence(self, sentence: TokenList):
-        self.current_score += self.analyze_sentence(sentence)
+        metric, length = self.analyze_sentence(sentence)
+        self.current_rawscore += metric
+        self.current_wordcount += length
 
 
 @dataclass(frozen=True)
@@ -112,11 +135,12 @@ def _relative_order_same(grammar1: Dict[float], grammar2: Dict[float]):
 
 
 class GrammarHillclimb:
-    def __init__(self, deprels: List[str], analyzers: List[Analyzer]):
+    def __init__(self, deprels: List[str], analyzers: List[Analyzer], weights: List[SupportsAbs] = None):
 
         self.deprels = deprels
-
-        self.analyzers = analyzers
+        self.train_analyzers = analyzers
+        self.dev_analyzers = list(copy.deepcopy(analyzer) for analyzer in self.train_analyzers)
+        self.analyzer_weights = weights
 
     def _train_grammar_step(self, grammar: dict, sentences: Union[List, Callable], epoch=-1):
 
@@ -132,8 +156,8 @@ class GrammarHillclimb:
 
             logging.debug("relative order same; skipping computation")
 
-            improvement_scores = {analyzer.metric: 1.0 for analyzer in self.analyzers}
-            metric_scores = {analyzer.metric: analyzer.previous_score for analyzer in self.analyzers}
+            improvement_scores = {analyzer.metric: 1.0 for analyzer in self.train_analyzers}
+            metric_scores = {analyzer.metric: analyzer.get_previous_score() for analyzer in self.train_analyzers}
 
             return TrainGrammarContainer(grammar=new_grammar, update=False, epoch=epoch, scores=metric_scores, improvements=improvement_scores)
 
@@ -141,7 +165,9 @@ class GrammarHillclimb:
         hypothesis_permuter = FixedOrderPermuter(new_grammar)
 
         if callable(sentences):
-            sentences = (sent for sent in sentences())
+            sentences = (
+                sent for sent in sentences()
+            )
 
 
         for sentence in sentences:
@@ -150,33 +176,49 @@ class GrammarHillclimb:
             permuted_sentence = hypothesis_permuter.process_sentence(sentence)
 
             # Analyzers ingest sentence
-            for analyzer in self.analyzers:
+            for analyzer in self.train_analyzers:
                 analyzer.ingest_sentence(permuted_sentence)
 
         # Get mean improvement score as arithmetic mean
-        improvement_scores = {analyzer.metric: analyzer.get_improvement_score() for analyzer in self.analyzers}
-        mean_improvement_score = statistics.mean(improvement_scores.values())
+        improvement_scores = {analyzer.metric: analyzer.get_improvement_score() for analyzer in self.train_analyzers}
+        mean_improvement_score = np.average(list(improvement_scores.values()), weights=self.analyzer_weights)
 
         # Get metric scores
-        metric_scores = {analyzer.metric: analyzer.current_score for analyzer in self.analyzers}
+        metric_scores = {analyzer.metric: analyzer.get_current_score() for analyzer in self.train_analyzers}
 
         update = False
         # Update previous score in analyzers if MIP below 1
         if mean_improvement_score < 1.0:
             logging.debug(f"Mean improvement score of {mean_improvement_score}; updating grammar")
             update = True
-            for analyzer in self.analyzers:
+            for analyzer in self.train_analyzers:
                 analyzer.update_previous_score()
 
         # Flush current scores
-        for analyzer in self.analyzers:
+        for analyzer in self.train_analyzers:
             analyzer.flush()
 
         return TrainGrammarContainer(grammar=new_grammar, update=update, epoch=epoch, scores=metric_scores, improvements=improvement_scores)
 
-    def _dev_evaluation(self, sentences: Union[List, Callable], epoch: int = -1):
+    def _dev_evaluation(self, grammar: dict, sentences: Union[List, Callable], epoch: int = -1):
 
-        pass
+        # Create new fixed order permuter with new grammar
+        dev_permuter = FixedOrderPermuter(grammar)
+
+        if callable(sentences):
+            sentences = (
+                sent for sent in sentences()
+            )
+
+        for sentence in sentences:
+
+            # Permute sentence with fixed order permuter
+            permuted_sentence = dev_permuter.process_sentence(sentence)
+
+            # Analyzers ingest sentence
+            for analyzer in self.train_analyzers:
+                analyzer.ingest_sentence(permuted_sentence)
+
 
     def train_grammars(
         self,
@@ -184,6 +226,7 @@ class GrammarHillclimb:
         dev_sentences: Union[List, Callable] = None,
         epochs=500,
         burnin=50,
+
     ):
 
         grammar = {deprel: random.uniform(-1, 1) for deprel in self.deprels}
@@ -201,7 +244,7 @@ class GrammarHillclimb:
         for i in range(epochs):
             logging.info(f"Train epoch {i}")
 
-            response = self._train_grammar_step(grammar, train_sentences)
+            response = self._train_grammar_step(grammar, train_sentences, epoch=i)
             yield response
 
             if response.update:
