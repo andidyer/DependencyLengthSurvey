@@ -104,17 +104,19 @@ class GrammarContainer:
 
 @dataclass(frozen=True)
 class TrainGrammarContainer(GrammarContainer):
-    update: bool
     scores: dict = field(default_factory=dict)
     improvements: dict = field(default_factory=dict)
     name: str = field(init=False, default="Train")
+    update: bool = False
+    inert: bool = False
 
 
 @dataclass(frozen=True)
 class DevGrammarContainer(GrammarContainer):
-    update: bool
     scores: dict = field(default_factory=dict)
     name: str = field(init=False, default="Dev")
+    update: bool = False
+    inert: bool = False
 
 
 @dataclass(frozen=True)
@@ -159,7 +161,7 @@ class GrammarHillclimb:
             improvement_scores = {analyzer.metric: 1.0 for analyzer in self.train_analyzers}
             metric_scores = {analyzer.metric: analyzer.get_previous_score() for analyzer in self.train_analyzers}
 
-            return TrainGrammarContainer(grammar=new_grammar, update=False, epoch=epoch, scores=metric_scores, improvements=improvement_scores)
+            return TrainGrammarContainer(grammar=new_grammar, update=False, inert=True, epoch=epoch, scores=metric_scores, improvements=improvement_scores)
 
         # Create new fixed order permuter with new grammar
         hypothesis_permuter = FixedOrderPermuter(new_grammar)
@@ -231,6 +233,7 @@ class GrammarHillclimb:
 
         grammar = {deprel: random.uniform(-1, 1) for deprel in self.deprels}
 
+
         logging.info(f"Beginning burn-in process: ({burnin} epochs)")
         for i in range(burnin):
             # Do not store or yield these
@@ -243,6 +246,7 @@ class GrammarHillclimb:
         logging.info(f"Beginning generation: ({epochs} epochs)")
         for i in range(epochs):
             logging.info(f"Train epoch {i}")
+
 
             response = self._train_grammar_step(grammar, train_sentences, epoch=i)
             yield response
