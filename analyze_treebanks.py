@@ -120,7 +120,12 @@ def parse_args():
         help="If true, token scores will be aggregated and the results for each sentence will be output in an ndjson",
     )
 
-    optional.add_argument("--verbose", action="store_true", help="Verbosity")
+    optional.add_argument(
+        "--verbosity",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="WARNING",
+        help="Set the logging verbosity level (default: INFO)",
+    )
 
     args = parser.parse_args()
 
@@ -129,6 +134,11 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    # Set logging level
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(message)s", level=args.verbosity
+    )
 
     # Set random seed
     random.seed(args.random_seed)

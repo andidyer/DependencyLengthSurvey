@@ -2,15 +2,19 @@ from __future__ import annotations
 import random
 import copy
 import logging
-import statistics
+import math
 import numpy as np
 from typing import List, Callable, Iterable, Union, Dict, SupportsAbs
 
-from dataclasses import dataclass,field
+from dataclasses import dataclass, field
 from conllu import TokenList
 
 from src.sentence_analyzer import SentenceAnalyzer
 from src.sentence_permuter import FixedOrderPermuter
+
+
+EPSILON_HI = 1e-6
+EPSILON_LO = 1e-7
 
 
 class Analyzer:
@@ -18,11 +22,11 @@ class Analyzer:
     metric = "NULL"
 
     def __init__(self):
-        self.previous_rawscore = None
-        self.previous_wordcount = None
+        self.previous_rawscore = EPSILON_HI
+        self.previous_wordcount = EPSILON_LO
 
-        self.current_rawscore = 0
-        self.current_wordcount = 0
+        self.current_rawscore = EPSILON_HI
+        self.current_wordcount = EPSILON_LO
 
     def ingest_sentence(self, sentence: TokenList):
         pass
@@ -32,6 +36,9 @@ class Analyzer:
         self.previous_wordcount = self.current_wordcount
 
     def get_previous_score(self):
+        if self.previous_rawscore is None or self.previous_wordcount is None:
+            self.previous_rawscore = self.current_rawscore
+            self.previous_wordcount = self.current_wordcount
         return self.previous_rawscore / self.previous_wordcount
 
     def get_current_score(self):
@@ -41,11 +48,14 @@ class Analyzer:
         if self.previous_rawscore is None:
             self.previous_rawscore = self.current_rawscore
             self.previous_wordcount = self.current_wordcount
-        return self.get_current_score() / self.get_previous_score()
+        cs, ps = self.get_current_score(), self.get_previous_score()
+        imp_score = cs / ps
+        logging.debug(f"{cs}/{ps}={imp_score}")
+        return imp_score
 
     def flush(self):
-        self.current_wordcount = 0
-        self.current_rawscore = 0
+        self.current_wordcount = EPSILON_LO
+        self.current_rawscore = EPSILON_HI
 
 
 class MemorySurprisalAnalyzer(Analyzer):
@@ -104,31 +114,35 @@ class GrammarContainer:
 
 @dataclass(frozen=True)
 class TrainGrammarContainer(GrammarContainer):
-    scores: dict = field(default_factory=dict)
-    improvements: dict = field(default_factory=dict)
+    train_scores: TrainScore
+    dev_scores: DevScore
+    epoch: int
     name: str = field(init=False, default="Train")
     update: bool = False
     inert: bool = False
 
 
 @dataclass(frozen=True)
-class DevGrammarContainer(GrammarContainer):
-    scores: dict = field(default_factory=dict)
-    name: str = field(init=False, default="Dev")
-    update: bool = False
-    inert: bool = False
+class BaselineGrammarContainer(GrammarContainer):
+    train_scores: TrainScore
+    dev_scores: DevScore
+    name: str = field(init=False, default="Baseline")
 
 
 @dataclass(frozen=True)
-class BaselineGrammarContainer(GrammarContainer):
-    scores: dict = field(default_factory=dict)
-    name: str = field(init=False, default="Dev")
+class Score:
+    metric_scores: dict
 
 
-def _change_grammar(key: str, value: float, grammar: dict):
-    new_grammar = copy.deepcopy(grammar)
-    new_grammar[key] = value
-    return new_grammar
+@dataclass(frozen=True)
+class TrainScore(Score):
+    improvements: dict
+
+
+@dataclass(frozen=True)
+class DevScore(Score):
+    pass
+
 
 def _relative_order_same(grammar1: Dict[float], grammar2: Dict[float]):
     order1 = sorted(grammar1, key=lambda x: grammar1[x])
@@ -136,62 +150,139 @@ def _relative_order_same(grammar1: Dict[float], grammar2: Dict[float]):
     return order1 == order2
 
 
+def _change_grammar_parameters_poisson(grammar: dict, lam: float = 1.5):
+
+    n_change_params = np.random.poisson(lam)
+    n_change_params = np.clip(1, len(grammar), n_change_params).item()
+
+    keys = list(grammar.keys())
+
+    params_to_change = random.sample(keys, n_change_params)
+    logging.debug(f"Changing params: {', '.join(params_to_change)}")
+
+    for param in params_to_change:
+        grammar[param] = random.uniform(-1, 1)
+
+    return grammar
+
+
+def _change_grammar_parameters_int(grammar: dict, n_params: int):
+
+    if not 1 <= n_params <= len(grammar):
+        raise ValueError(f"n_params {n_params} not within 1 and total size of grammar")
+
+    keys = list(grammar.keys())
+
+    params_to_change = random.sample(keys, n_params)
+    logging.debug(f"Changing params: {', '.join(params_to_change)}")
+
+    for param in params_to_change:
+        grammar[param] = random.uniform(-1, 1)
+
+    return grammar
+
+
+def _change_grammar_parameters(
+    grammar: dict, n_params: int = 1, poisson: bool = False, lam: float = 1
+):
+    """
+    :param grammar: The grammar to change parameters of. Expects Dict[str, float].
+    :param n_params: The number of parameters to change. Must be between 1 and the total number of parameters.
+    :param poisson: Whether to use a poisson PNG to decide how many parameters to change. Mutex with n_params.
+    :param lam: Lambda value for the poisson PNG if used.
+    :return: dict
+    """
+
+    grammar = copy.deepcopy(grammar)
+
+    if poisson:
+        return _change_grammar_parameters_poisson(grammar, lam)
+    else:
+        return _change_grammar_parameters_int(grammar, n_params)
+
+
 class GrammarHillclimb:
-    def __init__(self, deprels: List[str], analyzers: List[Analyzer], weights: List[SupportsAbs] = None):
+    def __init__(
+        self,
+        deprels: List[str],
+        analyzers: List[Analyzer],
+        weights: List[SupportsAbs] = None,
+    ):
 
         self.deprels = deprels
         self.train_analyzers = analyzers
-        self.dev_analyzers = list(copy.deepcopy(analyzer) for analyzer in self.train_analyzers)
+        self.dev_analyzers = list(
+            copy.deepcopy(analyzer) for analyzer in self.train_analyzers
+        )
+        self.baseline_analyzers = list(
+            copy.deepcopy(analyzer) for analyzer in self.train_analyzers
+        )
         self.analyzer_weights = weights
 
-    def _train_grammar_step(self, grammar: dict, sentences: Union[List, Callable], epoch=-1):
-
-        # Create random field and value for new hypothesis grammars
-        key = random.choice(self.deprels)
-        value = random.uniform(-1, 1)
+    def _train_grammar_step(
+        self,
+        grammar: dict,
+        train_sentences: Union[List, Callable],
+        dev_sentences: Union[List, Callable, None],
+        epoch=-1,
+    ):
 
         # Reset grammar
-        new_grammar = _change_grammar(key, value, grammar)
+        new_grammar = _change_grammar_parameters(grammar, poisson=True, lam=1.5)
+
+        # Whether the grammar will get an update because of the change. Default false.
+        update = False
+        inert = False
 
         # Skip and return previous epoch if relative order is unaffected
-        if _relative_order_same(grammar, new_grammar):
+        if _relative_order_same(grammar, new_grammar) and epoch > 0:
 
             logging.debug("relative order same; skipping computation")
 
-            improvement_scores = {analyzer.metric: 1.0 for analyzer in self.train_analyzers}
-            metric_scores = {analyzer.metric: analyzer.get_previous_score() for analyzer in self.train_analyzers}
+            for analyzer in self.train_analyzers + self.dev_analyzers:
+                analyzer.current_wordcount = analyzer.previous_wordcount
+                analyzer.current_rawscore = analyzer.previous_rawscore
 
-            return TrainGrammarContainer(grammar=new_grammar, update=False, inert=True, epoch=epoch, scores=metric_scores, improvements=improvement_scores)
+            inert = True
 
-        # Create new fixed order permuter with new grammar
-        hypothesis_permuter = FixedOrderPermuter(new_grammar)
+        else:
 
-        if callable(sentences):
-            sentences = (
-                sent for sent in sentences()
-            )
+            # Create new fixed order permuter with new grammar
+            hypothesis_permuter = FixedOrderPermuter(new_grammar)
 
+            # Load the train sentences
+            if callable(train_sentences):
+                train_sentences = (sent for sent in train_sentences())
 
-        for sentence in sentences:
+            for sentence in train_sentences:
 
-            # Permute sentence with fixed order permuter
-            permuted_sentence = hypothesis_permuter.process_sentence(sentence)
+                # Permute sentence with fixed order permuter
+                permuted_sentence = hypothesis_permuter.process_sentence(sentence)
 
-            # Analyzers ingest sentence
-            for analyzer in self.train_analyzers:
-                analyzer.ingest_sentence(permuted_sentence)
+                # Analyzers ingest sentence
+                for analyzer in self.train_analyzers:
+                    analyzer.ingest_sentence(permuted_sentence)
 
         # Get mean improvement score as arithmetic mean
-        improvement_scores = {analyzer.metric: analyzer.get_improvement_score() for analyzer in self.train_analyzers}
-        mean_improvement_score = np.average(list(improvement_scores.values()), weights=self.analyzer_weights)
+        improvement_scores = {
+            analyzer.metric: analyzer.get_improvement_score()
+            for analyzer in self.train_analyzers
+        }
+        mean_improvement_score = np.average(
+            list(improvement_scores.values()), weights=self.analyzer_weights
+        )
 
-        # Get metric scores
-        metric_scores = {analyzer.metric: analyzer.get_current_score() for analyzer in self.train_analyzers}
+        # Get train metric scores
+        train_metric_scores = {
+            analyzer.metric: analyzer.get_current_score()
+            for analyzer in self.train_analyzers
+        }
 
-        update = False
-        # Update previous score in analyzers if MIP below 1
+        # Update previous training score in analyzers if MIP below 1
         if mean_improvement_score < 1.0:
-            logging.debug(f"Mean improvement score of {mean_improvement_score}; updating grammar")
+            logging.debug(
+                f"Mean improvement score of {mean_improvement_score}; updating grammar"
+            )
             update = True
             for analyzer in self.train_analyzers:
                 analyzer.update_previous_score()
@@ -200,45 +291,123 @@ class GrammarHillclimb:
         for analyzer in self.train_analyzers:
             analyzer.flush()
 
-        return TrainGrammarContainer(grammar=new_grammar, update=update, epoch=epoch, scores=metric_scores, improvements=improvement_scores)
+        train_scores = TrainScore(
+            metric_scores=train_metric_scores, improvements=improvement_scores
+        )
 
-    def _dev_evaluation(self, grammar: dict, sentences: Union[List, Callable], epoch: int = -1):
+        # Dev evaluation
+        if dev_sentences is None:
+            dev_metric_scores = {
+                analyzer.metric: None for analyzer in self.dev_analyzers
+            }
 
-        # Create new fixed order permuter with new grammar
-        dev_permuter = FixedOrderPermuter(grammar)
+        elif inert:
+            dev_metric_scores = {
+                analyzer.metric: analyzer.get_previous_score()
+                for analyzer in self.dev_analyzers
+            }
 
-        if callable(sentences):
-            sentences = (
-                sent for sent in sentences()
-            )
+        else:
 
-        for sentence in sentences:
+            if callable(dev_sentences):
+                dev_sentences = (sent for sent in dev_sentences())
+
+            for sentence in dev_sentences:
+
+                permuted_sentence = hypothesis_permuter.process_sentence(sentence)
+
+                for analyzer in self.dev_analyzers:
+                    analyzer.ingest_sentence(permuted_sentence)
+
+            dev_metric_scores = {
+                analyzer.metric: analyzer.get_current_score()
+                for analyzer in self.dev_analyzers
+            }
+            for analyzer in self.dev_analyzers:
+                if update:
+                    analyzer.update_previous_score()
+                analyzer.flush()
+
+        dev_scores = DevScore(metric_scores=dev_metric_scores)
+
+        return TrainGrammarContainer(
+            grammar=new_grammar,
+            train_scores=train_scores,
+            dev_scores=dev_scores,
+            update=update,
+            inert=inert,
+            epoch=epoch,
+        )
+
+    def _baseline_evaluation(
+        self,
+        baseline_grammar: dict,
+        train_sentences: Union[List, Callable],
+        dev_sentences: [Union, Callable, None],
+    ):
+
+        hypothesis_permuter = FixedOrderPermuter(baseline_grammar)
+
+        # Load the train sentences
+        if callable(train_sentences):
+            train_sentences = (sent for sent in train_sentences())
+
+        for sentence in train_sentences:
 
             # Permute sentence with fixed order permuter
-            permuted_sentence = dev_permuter.process_sentence(sentence)
+            permuted_sentence = hypothesis_permuter.process_sentence(sentence)
 
             # Analyzers ingest sentence
             for analyzer in self.train_analyzers:
                 analyzer.ingest_sentence(permuted_sentence)
 
+        train_metric_scores = {
+            analyzer.metric: analyzer.get_current_score()
+            for analyzer in self.train_analyzers
+        }
+        train_scores = TrainScore(metric_scores=train_metric_scores, improvements=None)
+
+        if callable(dev_sentences):
+            dev_sentences = (sent for sent in dev_sentences())
+
+        for sentence in dev_sentences:
+
+            permuted_sentence = hypothesis_permuter.process_sentence(sentence)
+
+            for analyzer in self.dev_analyzers:
+                analyzer.ingest_sentence(permuted_sentence)
+
+        dev_metric_scores = {
+            analyzer.metric: analyzer.get_current_score()
+            for analyzer in self.dev_analyzers
+        }
+        dev_scores = DevScore(metric_scores=dev_metric_scores)
+
+        return BaselineGrammarContainer(
+            grammar=baseline_grammar, train_scores=train_scores, dev_scores=dev_scores, epoch=-1
+        )
 
     def train_grammars(
         self,
         train_sentences: Union[List, Callable],
         dev_sentences: Union[List, Callable] = None,
+        baseline_grammar: dict = None,
         epochs=500,
         burnin=50,
-
     ):
 
         grammar = {deprel: random.uniform(-1, 1) for deprel in self.deprels}
 
+        if baseline_grammar is not None:
+            logging.info(f"Getting baseline scores")
+            response = self._baseline_evaluation(grammar, train_sentences, dev_sentences)
+            yield response
 
         logging.info(f"Beginning burn-in process: ({burnin} epochs)")
         for i in range(burnin):
             # Do not store or yield these
             logging.info(f"Burnin epoch {i}")
-            response = self._train_grammar_step(grammar, train_sentences, epoch=i)
+            response = self._train_grammar_step(grammar, train_sentences, [], epoch=i)
 
             if response.update:
                 grammar = response.grammar
@@ -247,12 +416,7 @@ class GrammarHillclimb:
         for i in range(epochs):
             logging.info(f"Train epoch {i}")
 
-
-            response = self._train_grammar_step(grammar, train_sentences, epoch=i)
+            response = self._train_grammar_step(
+                grammar, train_sentences, dev_sentences, epoch=i
+            )
             yield response
-
-            if response.update:
-                grammar = response.grammar
-
-            # Yield dev steps
-            #yield self._dev_evaluation(dev_sentences, epoch=i)

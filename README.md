@@ -30,9 +30,11 @@ user$ pip install -r requirements.txt
 ### analyze_treebanks.py
 
 ```
-usage: analyze_treebanks.py [-h] [--treebank TREEBANK | --directory DIRECTORY] [--glob_pattern GLOB_PATTERN] [--random_seed RANDOM_SEED] [--outfile OUTFILE | --outdir OUTDIR]
-                            [--remove_config REMOVE_CONFIG] [--fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]]
-                            [--min_len MIN_LEN] [--max_len MAX_LEN] [--count_root] [--count_direction] [--tokenwise_scores] [--verbose]
+usage: analyze_treebanks.py [-h] [--treebank TREEBANK | --directory DIRECTORY]                                                                                     
+                            [--analysis_modes {DependencyLength,IntervenerComplexity,SemanticSimilarity,WordFrequency,WordZipfFrequency} [{DependencyLength,IntervenerComplexity,SemanticSimilarity,WordFrequency,WordZipfFrequency} ...]]
+                            [--glob_pattern GLOB_PATTERN] [--random_seed RANDOM_SEED] [--outfile OUTFILE | --outdir OUTDIR] [--remove_config REMOVE_CONFIG]
+                            [--fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]] [--mask_words] [--min_len MIN_LEN]
+                            [--max_len MAX_LEN] [--count_root] [--language LANGUAGE] [--aggregate] [--verbose]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -41,24 +43,21 @@ required arguments:
   --treebank TREEBANK   Treebank to load and permute
   --directory DIRECTORY
                         Directory from which to find treebanks by globbing
+  --analysis_modes {DependencyLength,IntervenerComplexity,SemanticSimilarity,WordFrequency,WordZipfFrequency} [{DependencyLength,IntervenerComplexity,SemanticSimilarity,WordFrequency,WordZipfFrequency} ...]
+                        Metrics with which to analyse tokens/sentences
   --outfile OUTFILE     The file to output the permuted treebank(s) to
   --outdir OUTDIR       The directory to output the permuted treebank(s) to
 
 optional arguments:
   --glob_pattern GLOB_PATTERN
                         glob pattern for recursively finding files that match the pattern
-  --random_seed RANDOM_SEED
-                        Random seed for permutation
-  --remove_config REMOVE_CONFIG
-                        ndjson format list of token properties to exclude
-  --fields_to_remove [{form,lemma,upos,xpos,feats,deps,misc} [{form,lemma,upos,xpos,feats,deps,misc} ...]]
-                        Masks any fields in a conllu that are not necessary; can save some space
   --min_len MIN_LEN     Exclude sentences with less than a given minimum number of tokens
   --max_len MAX_LEN     Exclude sentences with more than a given maximum number of tokens
   --count_root          Include the root node in the sentence analysis
-  --count_direction     Count left and right branching dependencies separately
-  --tokenwise_scores    Keep scores of all tokens in a separate field. This is a variable length list. If --count_direction is enabled, then left scores will have a negative sign      
+  --language LANGUAGE   Language (ISO639-1) for the WordFrequency analyzer
+  --aggregate           If true, token scores will be aggregated and the results for each sentence will be output in an ndjson
   --verbose             Verbosity
+
 
 ```
 
