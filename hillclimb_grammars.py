@@ -89,7 +89,7 @@ EPOCHS = args.epochs
 
 # Get list of deprels
 with open(args.deprels, encoding="utf-8") as fin:
-    DEPRELS = list(line.strip() for line in fin)
+    DEPRELS = list(line.strip() for line in fin if line.strip() != "")
 
 # Make cleaner
 logging.info("Making sentence cleaner")
@@ -127,7 +127,7 @@ weights = [1, 0]
 
 logging.info("Instantiating grammar hillclimb")
 mcmc = GrammarHillclimb(
-    deprels=DEPRELS, analyzers=[dl_analyzer, icm_analyzer], weights=weights
+    deprels=DEPRELS, analyzers=[dl_analyzer, icm_analyzer], objective_weights=weights
 )
 
 logging.info("Beginning grammar generation")
