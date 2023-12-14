@@ -217,41 +217,15 @@ class WordFrequencyAnalyzer(SentenceTokensAnalyzer):
     name = "Freq"
 
     def __init__(self, lang: str):
-
-        self.lang = lang
-
-    def word_frequency(self, word: str):
-        freqvalue = wordfreq.word_frequency(word, self.lang)
-
-        return freqvalue
-
-    def _process_token(self, mapping: dict, token: Token):
-        return self.word_frequency(token["form"])
-
-    def _process_tokens(self, tokenlist: Union[TokenList, Iterator[Token]]):
-        for token in tokenlist:
-            if not isinstance(token["id"], int):
-                continue
-            else:
-                yield self.word_frequency(token["form"])
-
-    def process_sentence(
-        self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False
-    ):
-        scores = list(self._process_tokens(tokenlist))
-        if aggregate:
-            return np.mean(scores)
-        else:
-            return scores
+        raise NotImplementedError
 
 
-class WordZipfFrequencyAnalyzer(WordFrequencyAnalyzer):
+class WordZipfFrequencyAnalyzer:
 
     name = "ZipfFreq"
 
     def __init__(self, lang: str):
-        super().__init__(lang)
-        self.lang = lang
+        raise NotImplementedError
 
     def word_frequency(self, word: str):
         freqvalue = wordfreq.zipf_frequency(word, self.lang)
