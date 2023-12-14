@@ -145,19 +145,23 @@ def _relative_order_same(grammar1: Dict[float], grammar2: Dict[float]):
     return order1 == order2
 
 
-def _coerce_sentence_list_to_iterable(sentences: Union[List, Callable]) -> Union[List, Generator]:
+def _coerce_sentence_list_to_iterable(
+    sentences: Union[List, Callable]
+) -> Union[List, Generator]:
     if callable(sentences):
         return (sent for sent in sentences())
     elif isinstance(sentences, list):
         return sentences
 
 
-def _change_grammar_parameters_poisson(grammar: dict, sample_weights: list = None, lam: float = 1.5):
+def _change_grammar_parameters_poisson(
+    grammar: dict, sample_weights: list = None, lam: float = 1.5
+):
 
     grammar_copy = copy.deepcopy(grammar)
 
     if sample_weights is None:
-        sample_weights = list(1/len(grammar_copy) for _ in grammar_copy)
+        sample_weights = list(1 / len(grammar_copy) for _ in grammar_copy)
 
     n_change_params = np.random.poisson(lam)
     n_change_params = np.clip(n_change_params, 1, len(grammar_copy)).item()
@@ -165,7 +169,9 @@ def _change_grammar_parameters_poisson(grammar: dict, sample_weights: list = Non
 
     keys = list(grammar.keys())
 
-    params_to_change = np.random.choice(keys, n_change_params, replace=False, p=sample_weights)
+    params_to_change = np.random.choice(
+        keys, n_change_params, replace=False, p=sample_weights
+    )
     logging.debug(f"Changing params: {', '.join(params_to_change)}")
 
     for param in params_to_change:
@@ -174,12 +180,14 @@ def _change_grammar_parameters_poisson(grammar: dict, sample_weights: list = Non
     return grammar_copy
 
 
-def _change_grammar_parameters_int(grammar: dict, n_params: int, sample_weights: list = None):
+def _change_grammar_parameters_int(
+    grammar: dict, n_params: int, sample_weights: list = None
+):
 
     grammar_copy = copy.deepcopy(grammar)
 
     if sample_weights is None:
-        sample_weights = list(1/len(grammar_copy) for _ in grammar_copy)
+        sample_weights = list(1 / len(grammar_copy) for _ in grammar_copy)
 
     if not 1 <= n_params <= len(grammar_copy):
         raise ValueError(f"n_params {n_params} not within 1 and total size of grammar")
@@ -196,7 +204,11 @@ def _change_grammar_parameters_int(grammar: dict, n_params: int, sample_weights:
 
 
 def _change_grammar_parameters(
-    grammar: dict, n_params: int = 1, sample_weights: list = None, poisson: bool = False, lam: float = 1
+    grammar: dict,
+    n_params: int = 1,
+    sample_weights: list = None,
+    poisson: bool = False,
+    lam: float = 1,
 ):
     """
     :param grammar: The grammar to change parameters of. Expects Dict[str, float].
@@ -207,9 +219,13 @@ def _change_grammar_parameters(
     """
 
     if poisson:
-        return _change_grammar_parameters_poisson(grammar, lam=lam, sample_weights=sample_weights)
+        return _change_grammar_parameters_poisson(
+            grammar, lam=lam, sample_weights=sample_weights
+        )
     else:
-        return _change_grammar_parameters_int(grammar, n_params, sample_weights=sample_weights)
+        return _change_grammar_parameters_int(
+            grammar, n_params, sample_weights=sample_weights
+        )
 
 
 class GrammarHillclimb:
@@ -230,7 +246,6 @@ class GrammarHillclimb:
         )
         self.analyzer_weights = objective_weights
 
-
     def _set_deprel_probability_weights(self, train_sentences: Union[List, Callable]):
 
         train_sentences = _coerce_sentence_list_to_iterable(train_sentences)
@@ -244,9 +259,8 @@ class GrammarHillclimb:
 
         # Convert to probabilities
         values_array = np.asarray(list(raw_frequencies.values()))
-        sample_weights = values_array/np.sum(values_array)
+        sample_weights = values_array / np.sum(values_array)
         self.deprel_weights = sample_weights
-
 
     def _train_grammar_step(
         self,
@@ -257,7 +271,9 @@ class GrammarHillclimb:
     ):
 
         # Reset grammar
-        hypothesis_grammar = _change_grammar_parameters(grammar, poisson=True, lam=1.0, sample_weights=self.deprel_weights)
+        hypothesis_grammar = _change_grammar_parameters(
+            grammar, poisson=True, lam=1.0, sample_weights=self.deprel_weights
+        )
 
         # Create new fixed order permuter with new grammar
         hypothesis_permuter = FixedOrderPermuter(hypothesis_grammar)
@@ -308,9 +324,7 @@ class GrammarHillclimb:
 
         # Update previous training score in analyzers if MIP below 1
         if mean_improvement_score < 1.0:
-            logging.debug(
-                f"Mean improvement score of {mean_improvement_score}"
-            )
+            logging.debug(f"Mean improvement score of {mean_improvement_score}")
             update = True
 
         # Update previous scores if update is True
@@ -418,7 +432,10 @@ class GrammarHillclimb:
             analyzer.flush()
 
         return BaselineGrammarContainer(
-            grammar=baseline_grammar, train_scores=train_scores, dev_scores=dev_scores, epoch=-1
+            grammar=baseline_grammar,
+            train_scores=train_scores,
+            dev_scores=dev_scores,
+            epoch=-1,
         )
 
     def train_grammars(
@@ -439,7 +456,9 @@ class GrammarHillclimb:
         if baseline_grammar is not None:
             logging.info(f"Getting baseline scores")
 
-            response = self._baseline_evaluation(baseline_grammar, train_sentences, dev_sentences)
+            response = self._baseline_evaluation(
+                baseline_grammar, train_sentences, dev_sentences
+            )
             yield response
 
         logging.info(f"Beginning burn-in process: ({burnin} epochs)")

@@ -165,7 +165,9 @@ def main():
     args = parse_args()
 
     # Set logging level according to verbosity
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=args.verbosity)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(message)s", level=args.verbosity
+    )
 
     # Set random seed
     random.seed(args.random_seed)

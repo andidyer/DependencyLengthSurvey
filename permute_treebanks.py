@@ -145,7 +145,9 @@ def main():
     random.seed(args.random_seed)
 
     # Set logging level according to verbosity
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=args.verbosity)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(message)s", level=args.verbosity
+    )
 
     # Loads the remove config (for removing tokens of given type) or ignores
     if args.remove_config:
