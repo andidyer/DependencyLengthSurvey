@@ -98,6 +98,22 @@ class DLAnalyzer(Analyzer):
         self.current_wordcount += length
 
 
+class AnalyzerFactory:
+
+    analyzer_dict = {
+        "DependencyLength": DLAnalyzer,
+        "IntervenerComplexity": IntervenerComplexityAnalyzer,
+    }
+
+    @staticmethod
+    def create_analyzer(analyzer_name: str):
+        return AnalyzerFactory.analyzer_dict[analyzer_name]()
+
+    @staticmethod
+    def create_analyzers(analyzer_names: List[str]):
+        return list(AnalyzerFactory.create_analyzer(analyzer_name) for analyzer_name in analyzer_names)
+
+
 @dataclass(frozen=True)
 class GrammarContainer:
     grammar: dict

@@ -2,7 +2,6 @@ import statistics
 from typing import List, Union, Iterator
 from dataclasses import dataclass, field
 
-import wordfreq
 from conllu import Token, TokenList
 import numpy as np
 
@@ -212,9 +211,13 @@ class SemanticSimilarityAnalyzer(SentenceTokensAnalyzer):
 
 class WordFrequencyAnalyzer(SentenceTokensAnalyzer):
 
+    # Do the wordfreq import here, because it is a troublesome package to install
+    import wordfreq
+
     name = "Freq"
 
     def __init__(self, lang: str):
+
         self.lang = lang
 
     def word_frequency(self, word: str):

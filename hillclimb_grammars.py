@@ -1,7 +1,8 @@
+import random
+
 from src.grammar_hillclimb import (
     GrammarHillclimb,
-    DLAnalyzer,
-    IntervenerComplexityAnalyzer,
+    AnalyzerFactory
 )
 from src.sentence_cleaner import SentenceCleaner
 from src.load_treebank import TreebankLoader
@@ -45,6 +46,19 @@ parser.add_argument(
     help="ndjson file to output the training outputs to",
 )
 parser.add_argument(
+    "--objectives",
+    type=str,
+    nargs="+",
+    choices=["DependencyLength", "IntervenerComplexity"],
+    help="Choose which analysis modes to use"
+)
+parser.add_argument(
+    "--weights",
+    type=int,
+    nargs="+",
+    help="Weight to assign to each analyzer for optimisation"
+)
+parser.add_argument(
     "--deprels",
     type=Path,
     help="Path to tzt files with deprels",
@@ -77,6 +91,11 @@ parser.add_argument(
     default="INFO",
     help="Set the logging level (default: INFO)",
 )
+parser.add_argument(
+    "--random_seed",
+    type=int,
+    default=1,
+)
 
 args = parser.parse_args()
 
@@ -86,6 +105,8 @@ logging.basicConfig(
 
 BURNIN = args.burnin
 EPOCHS = args.epochs
+
+random.seed(args.random_seed)
 
 # Get list of deprels
 with open(args.deprels, encoding="utf-8") as fin:
@@ -119,15 +140,16 @@ else:
 
 
 logging.info("Making analyzers")
-dl_analyzer = DLAnalyzer()
-icm_analyzer = IntervenerComplexityAnalyzer()
+analyzers = AnalyzerFactory.create_analyzers(args.objectives)
 
 logging.info("Making analyzer weights")
-weights = [1, 0]
+weights = args.weights
+
+assert len(analyzers) == len(weights), "Number of analyzers and weights does not match"
 
 logging.info("Instantiating grammar hillclimb")
 mcmc = GrammarHillclimb(
-    deprels=DEPRELS, analyzers=[dl_analyzer, icm_analyzer], objective_weights=weights
+    deprels=DEPRELS, analyzers=analyzers, objective_weights=weights
 )
 
 logging.info("Beginning grammar generation")
