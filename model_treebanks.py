@@ -53,7 +53,6 @@ parser.add_argument(
 parser.add_argument(
     "--log_level",
     choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-    default="INFO",
     help="Set the logging level (default: INFO)",
 )
 
@@ -115,7 +114,7 @@ fout = open(args.output_file, "w", encoding="utf-8")
 
 json.dump(
     {
-        "model_conditional_entropy": 0.2,
+        "model_conditional_entropy": model_entropy,
         "training_set_conditional_entropy": training_entropy,
         "development_set_conditional_entropy": dev_entropy,
         "model_per_label_entropy": per_label_entropy,
