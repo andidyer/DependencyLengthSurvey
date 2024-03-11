@@ -12,6 +12,7 @@ from conllu import TokenList
 
 from src.sentence_analyzer import SentenceAnalyzer
 from src.sentence_permuter import FixedOrderPermuter
+from src.model_treebanks import BigramMutualInformationModeller
 
 
 EPSILON_HI = 1e-6
@@ -85,6 +86,26 @@ class DLAnalyzer(Analyzer):
     def __init__(self):
         super().__init__()
         self.analyzer = SentenceAnalyzer(["DependencyLength"], aggregate=True)
+
+    def analyze_sentence(self, sentence: TokenList):
+        response = self.analyzer.process_sentence(sentence)
+        length = response["Length"]
+        metric = response["DL"]
+        return metric, length
+
+    def ingest_sentence(self, sentence: TokenList):
+        metric, length = self.analyze_sentence(sentence)
+        self.current_rawscore += metric
+        self.current_wordcount += length
+
+
+class BigramMutualInformationAnalyzer(Analyzer):
+
+    metric = "BigramMI"
+
+    def __init__(self):
+        super().__init__()
+        self.analyzer = BigramMutualInformationModeller(["DependencyLength"], aggregate=True)
 
     def analyze_sentence(self, sentence: TokenList):
         response = self.analyzer.process_sentence(sentence)
