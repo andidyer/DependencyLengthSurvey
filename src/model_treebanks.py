@@ -2,7 +2,7 @@ import sys
 from conllu import Token, TokenList, TokenTree
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 import numpy as np
 from scipy.sparse import coo_matrix, csr_matrix, csc_matrix, dok_matrix
 
@@ -109,83 +109,57 @@ class BigramMutualInformationModeller(Modeller):
     def __init__(self, lower: bool = True, threshold: int = 1, normalized: bool = False):
         self.w2i = defaultdict(lambda: len(self.w2i), {"<SOS>": 0, "<EOS>": 1})
         self.i2w = defaultdict(lambda: len(self.i2w), {v: k for k,v in self.w2i.items()})
-        self.counts = coo_matrix((2,2)) # Initialise as empty
+        self.counts = dok_matrix((sys.maxsize, sys.maxsize)) # Initialise as empty
         self.lower = lower
         self.threshold = threshold
         self.normalized = normalized
 
-    def _ingest_sentence(self, sentence: TokenList, _temp_count: coo_matrix):
+    def _ingest_sentence(self, sentence: TokenList):
         seq = [Token(form="<SOS>")] + sentence + [Token(form="<EOS>")]
         for i, token in enumerate(seq[:-1]):
-            self._ingest_bigram(seq[i], seq[i+1], _temp_count)
+            self._ingest_bigram(seq[i], seq[i+1])
 
-    def _ingest_bigram(self, token1: Token, token2: Token, _temp_count: coo_matrix):
+    def _ingest_bigram(self, token1: Token, token2: Token):
         form1 = self._get_form(token1, self.lower)
         form2 = self._get_form(token2, self.lower)
         w_i1 = self.w2i[form1]
         w_i2 = self.w2i[form2]
         self.i2w[w_i1] = form1
         self.i2w[w_i2] = form2
-        _temp_count[w_i1, w_i2] += 1
+        self.counts[w_i1, w_i2] += 1
 
     @staticmethod
     def _get_form(token, lower=False):
         form = token["form"]
         return form.lower() if lower else form
 
-    def _add_new_counts(self, _temp_count: coo_matrix):
-        n, k = self.counts.shape
-        v = len(self.w2i)
-
-        _temp_count = self.truncate_coo_matrix(_temp_count, v, v)
-        temp_count_csr = _temp_count.tocsr()
-        counts_csr = self.counts.tocsr()
-
-        temp_count_csr[:n, :k] += counts_csr
-        temp_count_csr = temp_count_csr[:v, :v]
-        self.counts = temp_count_csr.tocoo()
-
-    @staticmethod
-    def truncate_coo_matrix(input_matrix: coo_matrix, max_row: int, max_col: int):
-        # Mask indicating valid rows and columns
-        row_mask = input_matrix.row < max_row
-        col_mask = input_matrix.col < max_col
-
-        # Apply mask to data, row, and col arrays
-        truncated_data = input_matrix.data[row_mask & col_mask]
-        truncated_row = input_matrix.row[row_mask & col_mask]
-        truncated_col = input_matrix.col[row_mask & col_mask]
-
-        # Create the truncated COO matrix
-        truncated_matrix = coo_matrix((truncated_data, (truncated_row, truncated_col)), shape=(max_row, max_col))
-
-        return truncated_matrix
-
-    @staticmethod
-    def _thresh_counts(count_matrix: coo_matrix, threshold: int = 1):
-        v, w = count_matrix.shape
-        new_data, new_row, new_col = [], [], []
-        for d, r, c in zip(count_matrix.data, count_matrix.row, count_matrix.col):
-            if d >= threshold:
-                new_data.append(d)
-                new_row.append(r)
-                new_col.append(c)
-        new_matrix = coo_matrix((new_data, (new_row, new_col)), shape=(v,w))
+    def _get_truncated_count_matrix(self, count_matrix: dok_matrix, max_rows: int, max_cols: int):
+        new_matrix = count_matrix[:max_rows, :max_cols]
         return new_matrix
 
-    def _set_probabilities(self):
-        threshed_counts = self._thresh_counts(self.counts, self.threshold)
-        self.joint_probabilities = threshed_counts * (1 / threshed_counts.sum())  # Use the reciprocal to avoid nan and dense matrix
-        self.marginal_x = self.joint_probabilities.sum(axis=1).flatten()
-        self.marginal_y = self.joint_probabilities.sum(axis=0).flatten()
+    def _thresh_counts(self, count_matrix: dok_matrix, threshold: int = 1) -> dok_matrix:
+
+        threshed_data = {(i, j): value for (i, j), value in count_matrix.items() if value >= threshold}
+        threshed_matrix = dok_matrix(count_matrix.shape)
+        for (i, j), value in threshed_data.items():
+            threshed_matrix[i, j] = value
+
+        return threshed_matrix
+
+    def _get_probabilities(self) -> Tuple[coo_matrix, np.matrix, np.matrix]:
+        v = len(self.w2i)
+        truncated_counts = self._get_truncated_count_matrix(self.counts, v, v)
+        threshed_counts = self._thresh_counts(truncated_counts, self.threshold)
+        joint_probabilities = threshed_counts * (1 / threshed_counts.sum())  # Use the reciprocal to avoid nan and dense matrix
+        joint_probabilities = coo_matrix(joint_probabilities)
+        marginal_x = joint_probabilities.sum(axis=1).flatten()
+        marginal_y = joint_probabilities.sum(axis=0).flatten()
+
+        return joint_probabilities, marginal_x, marginal_y
 
     def fit(self, sentences: Iterable[TokenList], **kwargs):
-        _temp_count = dok_matrix((sys.maxsize, sys.maxsize))
         for sentence in sentences:
-            self._ingest_sentence(sentence, _temp_count=_temp_count)
-        _temp_count = coo_matrix(_temp_count)
-        self._add_new_counts(_temp_count)
-        self._set_probabilities()
+            self._ingest_sentence(sentence)
 
     def predict(self, sentences: Iterable[TokenList], **kwargs):
         raise NotImplementedError
@@ -200,26 +174,28 @@ class BigramMutualInformationModeller(Modeller):
             return self.mi_score()
 
     def mi_score(self):
+        joint_probabilities, marginal_x, marginal_y = self._get_probabilities()
         mi = 0.0
-        for i, xy_p in enumerate(self.joint_probabilities.data):
-            x_ind = self.joint_probabilities.row[i]
-            y_ind = self.joint_probabilities.col[i]
-            x_p = self.marginal_x[0, x_ind]
-            y_p = self.marginal_y[0, y_ind]
+        for i, xy_p in enumerate(joint_probabilities.data):
+            x_ind = joint_probabilities.row[i]
+            y_ind = joint_probabilities.col[i]
+            x_p = marginal_x[0, x_ind]
+            y_p = marginal_y[0, y_ind]
             pmi = np.log2(xy_p / (x_p * y_p))
             mi += pmi
-
         return mi
 
     def norm_mi_score(self):
+        joint_probabilities, marginal_x, marginal_y = self._get_probabilities()
+
         dividend = 0.0
         divisor = 0.0
 
-        for i, xy_p in enumerate(self.joint_probabilities.data):
-            x_ind = self.joint_probabilities.row[i]
-            y_ind = self.joint_probabilities.col[i]
-            x_p = self.marginal_x[0, x_ind]
-            y_p = self.marginal_y[0, y_ind]
+        for i, xy_p in enumerate(joint_probabilities.data):
+            x_ind = joint_probabilities.row[i]
+            y_ind = joint_probabilities.col[i]
+            x_p = marginal_x[0, x_ind]
+            y_p = marginal_y[0, y_ind]
 
             pmi = np.log2(xy_p / (x_p * y_p))
             dividend += xy_p * pmi
