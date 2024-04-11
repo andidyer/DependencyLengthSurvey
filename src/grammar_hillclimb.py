@@ -3,6 +3,8 @@ import random
 import copy
 import logging
 import math
+import sys
+
 import numpy as np
 from typing import List, Callable, Generator, Union, Dict, SupportsAbs
 
@@ -21,9 +23,13 @@ EPSILON_LO = 1e-7
 
 class Analyzer:
 
+    pass
+
+class SentenceLevelAnalyzer(Analyzer):
+
     metric = "NULL"
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.previous_rawscore = EPSILON_HI
         self.previous_wordcount = EPSILON_LO
 
@@ -49,21 +55,20 @@ class Analyzer:
         logging.debug(f"{cs}/{ps}={imp_score}")
         return imp_score
 
+    def use_previous_score(self):
+        self.current_rawscore = self.previous_rawscore
+        self.current_wordcount = self.previous_wordcount
+
     def flush(self):
         self.current_wordcount = EPSILON_LO
         self.current_rawscore = EPSILON_HI
 
 
-class MemorySurprisalAnalyzer(Analyzer):
-
-    metric = "MST"
-
-
-class IntervenerComplexityAnalyzer(Analyzer):
+class IntervenerComplexityAnalyzer(SentenceLevelAnalyzer):
 
     metric = "ICM"
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         self.analyzer = SentenceAnalyzer(["IntervenerComplexity"], aggregate=True)
 
@@ -79,12 +84,12 @@ class IntervenerComplexityAnalyzer(Analyzer):
         self.current_wordcount += length
 
 
-class DLAnalyzer(Analyzer):
+class DLAnalyzer(SentenceLevelAnalyzer):
 
     metric = "DL"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.analyzer = SentenceAnalyzer(["DependencyLength"], aggregate=True)
 
     def analyze_sentence(self, sentence: TokenList):
@@ -99,24 +104,63 @@ class DLAnalyzer(Analyzer):
         self.current_wordcount += length
 
 
-class BigramMutualInformationAnalyzer(Analyzer):
+class CorpusLevelAnalyzer(Analyzer):
+
+    metric = "NULL"
+
+    def __init__(self, **kwargs):
+        self.previous_rawscore = EPSILON_LO
+        self.current_rawscore = EPSILON_HI
+
+    def ingest_sentence(self, sentence: TokenList):
+        pass
+
+    def update_previous_score(self):
+        self.previous_rawscore = self.current_rawscore
+
+    def get_previous_score(self):
+        return self.previous_rawscore
+
+    def get_current_score(self):
+        return self.current_rawscore
+
+    def get_improvement_score(self):
+        cs, ps = self.get_current_score(), self.get_previous_score()
+        imp_score = ps / cs
+        logging.debug(f"{ps}/{cs}={imp_score}")
+        return imp_score
+
+    def use_previous_score(self):
+        self.current_rawscore = self.previous_rawscore
+
+    def flush(self):
+        self.modeller.flush()
+        self.current_score = EPSILON_LO
+
+
+class BigramMutualInformationAnalyzer(CorpusLevelAnalyzer):
 
     metric = "BigramMI"
 
-    def __init__(self):
-        super().__init__()
-        self.analyzer = BigramMutualInformationModeller(["DependencyLength"], aggregate=True)
-
-    def analyze_sentence(self, sentence: TokenList):
-        response = self.analyzer.process_sentence(sentence)
-        length = response["Length"]
-        metric = response["DL"]
-        return metric, length
+    def __init__(self, lowercase=True, threshold=2, normalized=False, **kwargs):
+        super().__init__(**kwargs)
+        self.modeller = BigramMutualInformationModeller(lowercase=lowercase, threshold=threshold, normalized=normalized)
 
     def ingest_sentence(self, sentence: TokenList):
-        metric, length = self.analyze_sentence(sentence)
-        self.current_rawscore += metric
-        self.current_wordcount += length
+        self.modeller._ingest_sentence(sentence)
+
+    def get_improvement_score(self):
+        cs, ps = self.get_current_score(), self.get_previous_score()
+        imp_score = ps / cs
+        logging.debug(f"{ps}/{cs}={imp_score}")
+        return imp_score
+
+    def get_current_score(self):
+        self.calculate_current_score()
+        return self.current_rawscore
+
+    def calculate_current_score(self):
+        self.current_rawscore = self.modeller.model_score()
 
 
 class AnalyzerFactory:
@@ -124,15 +168,16 @@ class AnalyzerFactory:
     analyzer_dict = {
         "DependencyLength": DLAnalyzer,
         "IntervenerComplexity": IntervenerComplexityAnalyzer,
+        "BigramMutualInformation": BigramMutualInformationAnalyzer,
     }
 
     @staticmethod
-    def create_analyzer(analyzer_name: str):
-        return AnalyzerFactory.analyzer_dict[analyzer_name]()
+    def create_analyzer(analyzer_name: str, **kwargs):
+        return AnalyzerFactory.analyzer_dict[analyzer_name](**kwargs)
 
     @staticmethod
-    def create_analyzers(analyzer_names: List[str]):
-        return list(AnalyzerFactory.create_analyzer(analyzer_name) for analyzer_name in analyzer_names)
+    def create_analyzers(analyzer_names: List[str], **kwargs):
+        return list(AnalyzerFactory.create_analyzer(analyzer_name, **kwargs) for analyzer_name in analyzer_names)
 
 
 @dataclass(frozen=True)
@@ -325,8 +370,7 @@ class GrammarHillclimb:
             logging.debug("relative order same; skipping computation")
 
             for analyzer in self.train_analyzers + self.dev_analyzers:
-                analyzer.current_wordcount = analyzer.previous_wordcount
-                analyzer.current_rawscore = analyzer.previous_rawscore
+                analyzer.use_previous_score()
 
             inert = True
 

@@ -26,6 +26,10 @@ class Modeller(ABC):
         self.fit(sentences)
         return self.predict(sentences)
 
+    @abstractmethod
+    def flush(self):
+        pass
+
 
 class HeadDirectionEntropyModeller(Modeller):
 
@@ -104,13 +108,17 @@ class HeadDirectionEntropyModeller(Modeller):
         label_ents = -np.sum(label_probs * np.log2(label_probs), axis=1)
         return {label: value for label, value in zip(self.deprel2i, label_ents)}
 
+    def flush(self):
+        self.deprel2i = defaultdict(lambda: len(self.deprel2i))
+        self.counts = np.full((1, 2), EPSILON)  # Counts initialised as basically empty
+
 class BigramMutualInformationModeller(Modeller):
 
-    def __init__(self, lower: bool = True, threshold: int = 1, normalized: bool = False):
+    def __init__(self, lowercase: bool = True, threshold: int = 1, normalized: bool = False):
         self.w2i = defaultdict(lambda: len(self.w2i), {"<SOS>": 0, "<EOS>": 1})
         self.i2w = defaultdict(lambda: len(self.i2w), {v: k for k,v in self.w2i.items()})
         self.counts = dok_matrix((sys.maxsize, sys.maxsize)) # Initialise as empty
-        self.lower = lower
+        self.lowercase = lowercase
         self.threshold = threshold
         self.normalized = normalized
 
@@ -120,8 +128,8 @@ class BigramMutualInformationModeller(Modeller):
             self._ingest_bigram(seq[i], seq[i+1])
 
     def _ingest_bigram(self, token1: Token, token2: Token):
-        form1 = self._get_form(token1, self.lower)
-        form2 = self._get_form(token2, self.lower)
+        form1 = self._get_form(token1, self.lowercase)
+        form2 = self._get_form(token2, self.lowercase)
         w_i1 = self.w2i[form1]
         w_i2 = self.w2i[form2]
         self.i2w[w_i1] = form1
@@ -129,9 +137,9 @@ class BigramMutualInformationModeller(Modeller):
         self.counts[w_i1, w_i2] += 1
 
     @staticmethod
-    def _get_form(token, lower=False):
+    def _get_form(token, lowercase=False):
         form = token["form"]
-        return form.lower() if lower else form
+        return form.lower() if lowercase else form
 
     def _get_truncated_count_matrix(self, count_matrix: dok_matrix, max_rows: int, max_cols: int):
         new_matrix = count_matrix[:max_rows, :max_cols]
@@ -202,3 +210,8 @@ class BigramMutualInformationModeller(Modeller):
             divisor += -(xy_p * -np.log2(xy_p))
 
         return dividend / divisor
+
+    def flush(self):
+        self.w2i = defaultdict(lambda: len(self.w2i), {"<SOS>": 0, "<EOS>": 1})
+        self.i2w = defaultdict(lambda: len(self.i2w), {v: k for k,v in self.w2i.items()})
+        self.counts = dok_matrix((sys.maxsize, sys.maxsize))  # Initialise as empty

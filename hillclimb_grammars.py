@@ -17,84 +17,104 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument(
+io_args = parser.add_argument_group("Input/output arguments")
+gen_hparams = parser.add_argument_group("General hyperparameters")
+module_hparams = parser.add_argument_group("Module hyperparameters")
+
+io_args.add_argument(
     "--train_directory",
     type=Path,
     default=".",
     help="Directory from which to find training treebanks by globbing",
 )
-parser.add_argument(
+io_args.add_argument(
     "--dev_directory",
     type=Path,
     nargs="?",
     help="Directory from which to find dev treebanks by globbing",
 )
-parser.add_argument(
+io_args.add_argument(
     "--train_glob",
     type=str,
     help="glob pattern for recursively finding files that match the pattern",
 )
-parser.add_argument(
+io_args.add_argument(
     "--dev_glob",
     type=str,
     nargs="?",
     help="glob pattern for recursively finding files that match the pattern",
 )
-parser.add_argument(
+io_args.add_argument(
     "--output_file",
     type=str,
     help="ndjson file to output the training outputs to",
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--objectives",
     type=str,
     nargs="+",
-    choices=["DependencyLength", "IntervenerComplexity"],
+    choices=["DependencyLength", "IntervenerComplexity", "BigramMutualInformation"],
     help="Choose which analysis modes to use"
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--weights",
     type=int,
     nargs="+",
     help="Weight to assign to each analyzer for optimisation"
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--deprels",
     type=Path,
     help="Path to tzt files with deprels",
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--baseline_grammar",
     type=Path,
     nargs="?",
     help="Path to baseline grammar",
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--epochs",
     type=int,
     help="Number of epochs to train",
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--burnin",
     type=int,
     default=0,
     help="Number of epochs to burn-in (i.e. train without output)",
 )
-parser.add_argument(
+io_args.add_argument(
     "--callable_loading",
     action="store_true",
     help="Load the treebanks afresh on each epoch as a callable function. Recommended only for reading very large data",
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--log_level",
     choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     default="INFO",
     help="Set the logging level (default: INFO)",
 )
-parser.add_argument(
+gen_hparams.add_argument(
     "--random_seed",
     type=int,
     default=1,
+)
+module_hparams.add_argument(
+    "--lowercase",
+    action="store_true",
+    help="Lowercase forms for modelling modules that use token forms",
+)
+module_hparams.add_argument(
+    "--normalized",
+    action="store_true",
+    help="For entropy-based measures, normalize to unit-length [-1,1]",
+)
+module_hparams.add_argument(
+    "--threshold",
+    type=int,
+    default=1,
+    help="Token frequency threshold for corpus-level calculations"
 )
 
 args = parser.parse_args()
@@ -138,9 +158,15 @@ if args.baseline_grammar is not None:
 else:
     baseline_grammar = None
 
+# Get optional kwargs to pass to analyzers for instantiation
+analyzer_kwargs = {
+    "lowercase": args.lowercase,
+    "threshold": args.threshold,
+    "normalized": args.normalized,
+}
 
 logging.info("Making analyzers")
-analyzers = AnalyzerFactory.create_analyzers(args.objectives)
+analyzers = AnalyzerFactory.create_analyzers(args.objectives, **analyzer_kwargs)
 
 logging.info("Making analyzer weights")
 weights = args.weights
