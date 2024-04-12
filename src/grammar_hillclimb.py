@@ -257,7 +257,7 @@ def _change_grammar_parameters_poisson(
     logging.debug(f"Changing params: {', '.join(params_to_change)}")
 
     for param in params_to_change:
-        grammar_copy[param] = random.uniform(-1, 1)
+        grammar_copy[param] = random.uniform(-1, 1).__round__(3)
 
     return grammar_copy
 
@@ -280,7 +280,7 @@ def _change_grammar_parameters_int(
     logging.debug(f"Changing params: {', '.join(params_to_change)}")
 
     for param in params_to_change:
-        grammar_copy[param] = random.uniform(-1, 1)
+        grammar_copy[param] = random.uniform(-1, 1).__round__(3)
 
     return grammar_copy
 
