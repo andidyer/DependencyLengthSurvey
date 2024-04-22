@@ -121,6 +121,12 @@ def parse_args():
     )
 
     optional.add_argument(
+        "--standardize_deprels",
+        action="store_true",
+        help="Standardize deprels to pre-colon labels"
+    )
+
+    optional.add_argument(
         "--verbosity",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default="WARNING",
@@ -150,7 +156,7 @@ def main():
         remove_config = None
 
     # Make cleaner
-    cleaner = SentenceCleaner(remove_config, args.fields_to_remove, args.mask_words)
+    cleaner = SentenceCleaner(remove_config, args.fields_to_remove, args.mask_words, args.standardize_deprels)
 
     # Make loader
     loader = TreebankLoader(

@@ -18,6 +18,7 @@ class SentenceCleaner(SentencePreProcessor):
         remove_config: List[Dict] = None,
         fields_to_empty: List[AnyStr] = None,
         mask_words: bool = False,
+        standardize_deprels: bool = False,
     ):
         self.remove_config = (
             [obj for obj in remove_config] if remove_config is not None else []
@@ -26,14 +27,16 @@ class SentenceCleaner(SentencePreProcessor):
             fields_to_empty if isinstance(fields_to_empty, list) else []
         )
         self.mask_words = mask_words
+        self.standardize_deprels = standardize_deprels
 
     @deepcopy_tokenlist
     def process_sentence(self, sentence: TokenList, **kwargs):
         sentence = self.remove_nonstandard_tokens(sentence)
         if self.mask_words:
             sentence = self.mask_token_lexicon(sentence)
+        if self.standardize_deprels:
+            sentence = standardize_deprels(sentence)
         sentence = self.remove_tokens(sentence)
-        sentence = standardize_deprels(sentence)
         sentence = self.empty_fields(sentence)
         return sentence
 
