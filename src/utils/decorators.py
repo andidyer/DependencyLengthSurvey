@@ -39,7 +39,7 @@ def preserve_metadata(function: Callable):
 
 def fix_token_indices(function: Callable):
     @wraps(function)
-    def inner(self: SentenceProcessor, tokenlist: TokenList, **kwargs):
+    def inner(self: object, tokenlist: TokenList, **kwargs):
 
         tokenlist = function(self, tokenlist, **kwargs)
 

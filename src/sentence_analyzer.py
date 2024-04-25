@@ -1,10 +1,8 @@
-import statistics
 from typing import List, Union, Iterator
 from dataclasses import dataclass, field
 
-from conllu import Token, TokenList
+from conllu import Token, TokenList, TokenTree
 import numpy as np
-
 
 class SentenceAnalyzer:
     def __init__(
@@ -34,6 +32,10 @@ class SentenceAnalyzer:
             self.token_analyzers.append(
                 IntervenerComplexityAnalyzer(count_root=count_root)
             )
+        if "HeadDependentDepth" in analyzers:
+            self.token_analyzers.append(
+                HeadDependentDepthAnalyzer(count_root=count_root)
+            )
         if "SemanticSimilarity" in analyzers:
             self.token_analyzers.append(SemanticSimilarityAnalyzer(w2v))
         if "WordFrequency" in analyzers:
@@ -41,44 +43,25 @@ class SentenceAnalyzer:
         if "WordZipfFrequency" in analyzers:
             self.token_analyzers.append(WordZipfFrequencyAnalyzer(language))
 
-    @staticmethod
-    def _iter_over_tokens(sentence: TokenList):
-        for token in sentence:
-            if not isinstance(token["id"], int):
-                continue
-            else:
-                yield token
-
-    def _process_sentence_tokenwise(self, sentence: TokenList):
-        mapping = make_tokens_mapping(sentence)
-        for token in self._iter_over_tokens(sentence):
-            for analyzer in self.token_analyzers:
-                analysis = {analyzer.name: analyzer._process_token(mapping, token)}
-                if token["misc"] is None:
-                    token["misc"] = {}
-                token["misc"].update(analysis)
-
-        return sentence
-
-    def _process_sentence_aggregate(self, sentence: TokenList):
-        analysis = {
-            "ID": sentence.metadata["sent_id"],
-            "Length": len(sentence.filter(id=lambda x: isinstance(x, int))),
-        }
-        for analyzer in self.token_analyzers:
-            key, value = (
-                analyzer.name,
-                analyzer.process_sentence(sentence, aggregate=True),
-            )
-            analysis.update({key: value})
-
-        return analysis
-
     def process_sentence(self, sentence: TokenList):
+        analyses = {analyzer.name: analyzer._process_tokens(sentence) for analyzer in self.token_analyzers}
         if self.aggregate:
-            return self._process_sentence_aggregate(sentence)
+            output_json = {
+                "ID": sentence.metadata["sent_id"],
+                "Length": len(sentence),
+            }
+            for analyzer_name, analysis_values in analyses.items():
+                analysis_values = list(analysis_values)
+                output_json.update({analyzer_name: np.abs(np.nansum(analysis_values)).item()})
+            return output_json
         else:
-            return self._process_sentence_tokenwise(sentence)
+            for analyzer_name, analysis_values in analyses.items():
+                for i, (token, value) in enumerate(zip(sentence, analysis_values)):
+                    if sentence[i]["misc"] is None:
+                        sentence[i]["misc"] = {}
+                    sentence[i]["misc"][analyzer_name] = value
+
+            return sentence
 
 
 class SentenceTokensAnalyzer:
@@ -96,8 +79,7 @@ class DependencyLengthAnalyzer(SentenceTokensAnalyzer):
     def __init__(self, count_root=False):
         self.count_root = count_root
 
-    # Mapping argument only for compatibility
-    def _process_token(self, mapping: dict, token: Token):
+    def _process_token(self, token: Token):
         if not self.count_root and token["head"] == 0:
             return 0
         else:
@@ -105,19 +87,18 @@ class DependencyLengthAnalyzer(SentenceTokensAnalyzer):
             return distance
 
     def _process_tokens(self, tokenlist: Union[TokenList, Iterator[Token]]):
+        scores = []
         for token in tokenlist:
             if not isinstance(token["id"], int):
                 continue
-            yield self._process_token({}, token)
+            scores.append(self._process_token(token))
+        return scores
 
     def process_sentence(
         self, tokenlist: Union[TokenList, Iterator[Token]], aggregate=False
     ):
         scores = list(self._process_tokens(tokenlist))
-        if aggregate:
-            return np.sum(np.abs(scores)).item()
-        else:
-            return scores
+        return scores
 
 
 class IntervenerComplexityAnalyzer(SentenceTokensAnalyzer):
@@ -141,7 +122,6 @@ class IntervenerComplexityAnalyzer(SentenceTokensAnalyzer):
             item.token["id"] for key, item in mapping.items() if item.has_children()
         )
         n_intervening_heads = sum(1 for head in sentence_heads if lo <= head <= hi)
-
         return n_intervening_heads
 
     def _process_tokens(self, tokenlist: Union[TokenList, Iterator[Token]]):
@@ -163,6 +143,29 @@ class IntervenerComplexityAnalyzer(SentenceTokensAnalyzer):
         else:
             return np.sum(np.abs(scores)).item()
 
+
+class HeadDependentDepthAnalyzer(SentenceTokensAnalyzer):
+
+    name = "HDD"
+
+    def __init__(self, count_root=False):
+        self.count_root = count_root
+
+    def _process_token(self, mapping: dict, token: Token):
+        if token["deprel"] == "root":
+            return 1 if self.count_root else 0
+        else:
+            head_token = mapping[token["head"]].token
+            return self._process_token(mapping, head_token) + 1
+
+    def _process_tokens(self, tokenlist: TokenList):
+        mapping = make_tokens_mapping(tokenlist)
+        result = list(self._process_token(mapping, token) for token in tokenlist)
+        return result
+
+
+    def process_sentence(self, sentence: TokenList, aggregate=False, **kwargs):
+        pass
 
 class SemanticSimilarityAnalyzer(SentenceTokensAnalyzer):
 
@@ -211,9 +214,6 @@ class SemanticSimilarityAnalyzer(SentenceTokensAnalyzer):
 
 class WordFrequencyAnalyzer(SentenceTokensAnalyzer):
 
-    # Do the wordfreq import here, because it is a troublesome package to install
-    import wordfreq
-
     name = "Freq"
 
     def __init__(self, lang: str):
@@ -228,9 +228,7 @@ class WordZipfFrequencyAnalyzer:
         raise NotImplementedError
 
     def word_frequency(self, word: str):
-        freqvalue = wordfreq.zipf_frequency(word, self.lang)
-
-        return freqvalue
+        pass
 
 
 @dataclass
@@ -244,7 +242,8 @@ class TokenExtra:
 
 
 def make_tokens_mapping(sentence: TokenList) -> dict:
-    mapping = {0: TokenExtra(Token(id=0, form="___root___"), None)}
+    root_token = Token(id=0, form="___root___")
+    mapping = {0: TokenExtra(root_token, None)}
     for token in sentence:
         if not isinstance(token["id"], int):
             continue

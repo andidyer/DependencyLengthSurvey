@@ -64,6 +64,7 @@ def parse_args():
         choices=[
             "DependencyLength",
             "IntervenerComplexity",
+            "HeadDependentDepth",
             "SemanticSimilarity",
             "WordFrequency",
             "WordZipfFrequency",
